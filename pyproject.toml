@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "sm"
+version = "0.1.0"
+description = "Package providing basic functionalities for the semantic modeling problem"
+authors = ["Binh Vu <binh@toan2.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+pandas = "^1.2.4"
+python-slugify = "^5.0.2"
+python-rocksdb = "^0.7.0"
+redis = "^3.5.3"
+pyrsistent = "^0.17.3"
+orjson = "^3.5.2"
+loguru = "^0.5.3"
+tqdm = "^4.60.0"
+networkx = "^2.5.1"
+matplotlib = "^3.4.2"
+pydot = "^1.4.2"
+ipython = "^7.23.1"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
