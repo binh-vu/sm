@@ -9,7 +9,7 @@ license = "MIT"
 python = "^3.8"
 pandas = "^1.2.4"
 python-slugify = "^5.0.2"
-python-rocksdb = "^0.7.0"
+rocksdb = "^0.7.0"
 redis = "^3.5.3"
 pyrsistent = "^0.17.3"
 orjson = "^3.5.2"
@@ -19,6 +19,9 @@ networkx = "^2.5.1"
 matplotlib = "^3.4.2"
 pydot = "^1.4.2"
 ipython = "^7.23.1"
+chardet = "^4.0.0"
+ujson = "^4.0.2"
+"ruamel.yaml" = "^0.17.4"
 
 [tool.poetry.dev-dependencies]
 
