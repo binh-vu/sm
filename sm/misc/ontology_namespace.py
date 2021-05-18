@@ -1,7 +1,7 @@
 import os
 from operator import itemgetter
 from pathlib import Path
-from typing import List, Dict, Tuple, Callable, Any, Optional
+
 from sm.misc.deser import deserialize_yml
 
 
@@ -11,13 +11,14 @@ class OntNS:
     instance = None
 
     def __init__(self):
-        default_infile = Path(__file__).absolute().parent.parent / "namespaces.yml"
+        default_infile = Path(__file__).absolute().parent.parent.parent / "namespaces.yml"
         infile = os.environ.get('OntNSFile', default_infile)
         if infile is not None:
             assert os.path.exists(infile)
         self.prefix2uri = dict(deserialize_yml(infile))
         # uri and prefix sorted by the length of uri
-        self.uri_and_prefix = sorted([(uri, prefix) for prefix, uri in self.prefix2uri.items()], key=itemgetter(0), reverse=True)
+        self.uri_and_prefix = sorted([(uri, prefix) for prefix, uri in self.prefix2uri.items()], key=itemgetter(0),
+                                     reverse=True)
 
     @staticmethod
     def get_instance():

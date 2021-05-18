@@ -561,7 +561,7 @@ def precision_recall_f1(gold_sm: 'SemanticModel', pred_sm: 'SemanticModel',
     else:
         precision = TP / len(all_groups.X_prime_triples)
 
-    if precision == 0 or recall == 0:
+    if precision == 0 and recall == 0:
         f1 = 0.0
     else:
         f1 = 2 * precision * recall / (precision + recall)
