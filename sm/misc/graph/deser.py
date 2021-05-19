@@ -5,8 +5,8 @@ from typing import List, Union, Optional
 
 import ujson
 
-from grams.misc.graph.query import PropPath
-from grams.misc.deser import serialize_json, deserialize_json
+from sm.misc.graph.query import PropPath
+from sm.misc.deser import serialize_json, deserialize_json
 
 
 def dump_json(g: nx.MultiDiGraph, outfile: Optional[str], node_props: List[str]=None, edge_props: List[str]=None, allow_unknown_key: bool=False):

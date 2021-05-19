@@ -23,7 +23,6 @@ class PropPath:
         if self.attrs[0] == '@id':
             assert len(self.attrs) == 1
 
-
     def get_value(self, objectid: str, objectdata: dict):
         """Get value of the edge or node specified by the path
 

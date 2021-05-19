@@ -1,7 +1,6 @@
 from typing import List, Dict, Tuple, Callable, Any, Optional
 
-from sm_unk.config import HOME_DIR
-from grams.misc.graph import *
+from sm.misc.graph import *
 
 
 def node_fn(nid, ndata):
@@ -35,7 +34,7 @@ def node_fn(nid, ndata):
     }
 
 
-g = load_json(HOME_DIR / "graph_viz/graph.json")
+# g = load_json(HOME_DIR / "graph_viz/graph.json")
 
 # B = QueryBuilder()
 #
@@ -50,7 +49,7 @@ g = load_json(HOME_DIR / "graph_viz/graph.json")
 #
 # g = query_graph(g, B.get_query())
 # dump_json(g, HOME_DIR / "graph_viz/graph.2.json")
-viz_graph(g, node_fn, lambda eid, e: {"label": e['data']['predicate'] + f" #{e['data']['weight']}"}, HOME_DIR / "graph_viz/test", "origin")
+# viz_graph(g, node_fn, lambda eid, e: {"label": e['data']['predicate'] + f" #{e['data']['weight']}"}, HOME_DIR / "graph_viz/test", "origin")
 
 
 def maximum_spanning_tree_solver(origin_sm_g: nx.MultiDiGraph):
@@ -84,5 +83,5 @@ def maximum_spanning_tree_solver(origin_sm_g: nx.MultiDiGraph):
             break
     return sm_g
 
-g2 = maximum_spanning_tree_solver(g)
-viz_graph(g2, node_fn, lambda eid, e: {"label": e['data']['predicate'] + f" #{e['data']['weight']}"}, HOME_DIR / "graph_viz/test", "pruning")
+# g2 = maximum_spanning_tree_solver(g)
+# viz_graph(g2, node_fn, lambda eid, e: {"label": e['data']['predicate'] + f" #{e['data']['weight']}"}, HOME_DIR / "graph_viz/test", "pruning")
