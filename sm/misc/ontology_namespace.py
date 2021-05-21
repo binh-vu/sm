@@ -21,7 +21,7 @@ class OntNS:
                                      reverse=True)
 
     @staticmethod
-    def get_instance():
+    def get_instance() -> 'OntNS':
         if OntNS.instance is None:
             OntNS.instance = OntNS.instance
         return OntNS.instance
