@@ -1,4 +1,5 @@
 import pickle
+from pathlib import Path
 from typing import TypeVar, Dict, Union, List, Callable, Any, Optional
 
 import redis, orjson
@@ -163,8 +164,8 @@ class CacheRedisStore(Dict[K, V]):
 
 
 class RocksDBStore(Dict[K, V]):
-    def __init__(self, inpath: str):
-        self.db = rocksdb.DB(str(inpath), rocksdb.Options(create_if_missing=True))
+    def __init__(self, dbfile: Union[Path, str], create_if_missing=True, read_only=False):
+        self.db = rocksdb.DB(str(dbfile), rocksdb.Options(create_if_missing=create_if_missing), read_only=read_only)
 
     def __contains__(self, key):
         return self.db.get(key.encode()) is not None
@@ -177,6 +178,9 @@ class RocksDBStore(Dict[K, V]):
 
     def __setitem__(self, key, value):
         self.db.put(key.encode(), value.encode())
+
+    def __delitem__(self, key):
+        self.db.delete(key.encode())
 
     def __len__(self):
         assert False, "Does not support this operator"
