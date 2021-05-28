@@ -1,11 +1,14 @@
 [tool.poetry]
 name = "sem-desc"
-version = "0.1.2"
+version = "0.1.3"
 description = "Package providing basic functionalities for the semantic modeling problem"
 authors = ["Binh Vu <binh@toan2.com>"]
 license = "MIT"
 packages = [
     { include = "sm" }
+]
+include = [
+    "namespaces.yml"
 ]
 
 [tool.poetry.dependencies]
