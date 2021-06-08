@@ -11,7 +11,7 @@ class OntNS:
     instance = None
 
     def __init__(self):
-        default_infile = Path(__file__).absolute().parent.parent.parent / "namespaces.yml"
+        default_infile = Path(__file__).absolute().parent.parent / "data/namespaces.yml"
         infile = os.environ.get('OntNSFile', default_infile)
         if infile is not None:
             assert os.path.exists(infile)
