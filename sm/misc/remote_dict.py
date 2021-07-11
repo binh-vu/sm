@@ -48,13 +48,6 @@ class RedisStore(Dict[K, V]):
         """Return a version of the store that will cache all of the query for faster processing"""
         return CacheDictStore(self)
 
-    def cache_file(self, cache_id) -> 'CacheFileStore[K, V]':
-        """Return a version of the store that will cache all of the query for faster processing"""
-        return CacheFileStore(self, cache_id)
-
-    def cache_redis(self, url: str, ns: Optional[str]) -> 'CacheRedisStore[K, V]':
-        return CacheRedisStore(self, ns, url)
-
     def deserialize(self, value: str):
         return value
 
@@ -98,9 +91,6 @@ class InMemStore(Dict[K, V]):
     def cache_dict(self) -> 'CacheDictStore[K, V]':
         return CacheDictStore(self)
 
-    def cache_redis(self, url: str, ns: Optional[str]) -> 'CacheRedisStore[K, V]':
-        return CacheRedisStore(self, ns, url)
-
     def as_dict(self):
         return {k: self.deserialize(v) for k, v in self.rdict.items()}
 
@@ -132,35 +122,6 @@ class CacheDictStore(Dict[K, V]):
 
     def __len__(self):
         return len(self.store)
-
-
-class CacheRedisStore(Dict[K, V]):
-    def __init__(self, store: Dict[K, V], ns: Optional[str], url: str):
-        self.store = store
-        self.cache = PickleRedisStore(url)
-        self.ns = ns
-        if self.ns is not None:
-            self._key = self._get_key
-        else:
-            self._key = identity_func
-
-    def __contains__(self, item: str):
-        return self._key(item) in self.cache or item in self.store
-
-    def __getitem__(self, item: str):
-        key2 = self._key(item)
-        if key2 not in self.cache:
-            self.cache[key2] = self.store[item]
-        return self.cache[key2]
-
-    def __setitem__(self, key: str, value: Union[str, bytes]):
-        raise Exception("NotSupportedFunction")
-
-    def _get_key(self, item):
-        return self.ns + ":" + item
-
-    def clear_cache(self):
-        self.cache.redis.flushdb()
 
 
 class RocksDBStore(Dict[K, V]):
@@ -204,3 +165,13 @@ class JSONRocksDBStore(RocksDBStore[str, dict]):
 
     def deserialize(self, value):
         return orjson.loads(value)
+
+
+class PickleRocksDBStore(RocksDBStore[K, V]):
+
+    def __setitem__(self, key: str, value: Any):
+        value = pickle.dumps(value)
+        self.db.put(key.encode(), value)
+
+    def deserialize(self, value: bytes):
+        return pickle.loads(value)

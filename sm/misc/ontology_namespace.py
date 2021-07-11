@@ -23,7 +23,7 @@ class OntNS:
     @staticmethod
     def get_instance() -> 'OntNS':
         if OntNS.instance is None:
-            OntNS.instance = OntNS.instance
+            OntNS.instance = OntNS()
         return OntNS.instance
 
     def get_abs_uri(self, rel_uri: str):
