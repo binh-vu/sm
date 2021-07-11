@@ -155,7 +155,7 @@ class ParallelMapFnWrapper:
             raise
 
 
-def parallel_map(fn, inputs, show_progress=False, progress_desc="", is_parallel=True, use_threadpool=False):
+def parallel_map(fn, inputs, show_progress=False, progress_desc="", is_parallel=True, use_threadpool=False, n_processes: Optional[int]=None):
     if not is_parallel:
         iter = (fn(item) for item in inputs)
         if show_progress:
@@ -163,14 +163,14 @@ def parallel_map(fn, inputs, show_progress=False, progress_desc="", is_parallel=
         return list(iter)
 
     if use_threadpool:
-        with ThreadPool() as pool:
+        with ThreadPool(processes=n_processes) as pool:
             iter = pool.imap_unordered(ParallelMapFnWrapper(fn).run, enumerate(inputs))
             if show_progress:
                 iter = tqdm(iter, total=len(inputs), desc=progress_desc)
             results = list(iter)
             results.sort(key=itemgetter(0))
     else:
-        with Pool() as pool:
+        with Pool(processes=n_processes) as pool:
             iter = pool.imap_unordered(ParallelMapFnWrapper(fn).run, enumerate(inputs))
             if show_progress:
                 iter = tqdm(iter, total=len(inputs), desc=progress_desc)
