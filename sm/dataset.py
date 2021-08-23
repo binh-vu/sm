@@ -1,30 +1,51 @@
-import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+from typing import List, TypeVar, Generic, Union, Callable
+
+from sm.misc import deserialize_json, get_latest_path
+from sm.outputs import SemanticModel
+
+T = TypeVar("T")
 
 
-"""Provide utilities to read/write/download dataset. Most of the dataset is stored in Github, except for large dataset we store them 
-
-Each dataset is stored in a folder with the following structures:
-
-<dataset_name>
-    <version>
-        . metadata.json: { version, url, date }
-        . tables:
-            <table_id>.csv - we use csv over json as it's easier to preview - all tables are relational tables with first row as header.
-        . wikidata:
-            . entities:
-                <table_id>.csv
-            . descriptions:
-                <table_id>/<version.xx.json>
-"""
-def read_dataset():
-    pass
+@dataclass
+class Example(Generic[T]):
+    sms: List[SemanticModel]
+    table: T
 
 
-def download():
-    """Download and unpack the dataset"""
-    pass
+def load(data_dir: Union[str, Path], table_deser: Callable[[dict], T]) -> List[Example]:
+    """Load dataset from a folder. Assuming the following structure:
+    - descriptions: (containing semantic descriptions of tables)
+        - <table_fs_id>
+            - version.01.json
+            - version.02.json
+            - ...
+        - ...
+    - tables: (containing list of tables, the type of table depends on )
+        - <table_fs_id>.json
+        - ...
 
+    Args:
+        data_dir:
+        table_deser: deserialize the table from dictionary
 
-def upload():
-    """Upload the dataset to a remote server"""
-    pass
+    Returns:
+
+    """
+    data_dir = Path(data_dir)
+    examples = []
+    for infile in (data_dir / "tables").iterdir():
+        if infile.name.startswith("."):
+            continue
+        assert infile.name.endswith(".json")
+        example_id = infile.stem
+
+        table = table_deser(deserialize_json(infile))
+        raw_sms = deserialize_json(
+            get_latest_path(data_dir / f"descriptions/{example_id}/version.json")
+        )
+        sms = [SemanticModel.from_dict(sm) for sm in raw_sms]
+
+        examples.append(Example(sms=sms, table=table))
+    return examples

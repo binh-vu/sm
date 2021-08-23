@@ -3,7 +3,7 @@ from contextlib import contextmanager
 
 
 class TimerCount:
-    def __init__(self, name: str, timer: 'Timer'):
+    def __init__(self, name: str, timer: "Timer"):
         self.name = name
         self.timer = timer
         self.start = time.time()
@@ -26,7 +26,7 @@ class Timer:
         return Timer.instance
 
     @contextmanager
-    def watch(self, name: str = 'default'):
+    def watch(self, name: str = "default"):
         try:
             count = self.start(name)
             yield None
@@ -43,7 +43,7 @@ class Timer:
             end = time.time()
             print_fn(msg + f": {end - start:.3f} seconds")
 
-    def start(self, name: str = 'default'):
+    def start(self, name: str = "default"):
         if name not in self.categories:
             self.categories[name] = 0.0
         return TimerCount(name, self)
@@ -58,5 +58,5 @@ class Timer:
         for k, v in self.categories.items():
             print_fn(f"\t{k}: {v:.3f} seconds")
 
-    def get_time(self, name: str = 'default'):
+    def get_time(self, name: str = "default"):
         return self.categories[name]

@@ -30,12 +30,12 @@ class Node(object):
         self.outgoing_links: List[Link] = []
 
     @staticmethod
-    def add_incoming_link(self: 'Node', link: 'Link'):
+    def add_incoming_link(self: "Node", link: "Link"):
         self.incoming_links.append(link)
         link.target = self
 
     @staticmethod
-    def add_outgoing_link(self: 'Node', link: 'Link'):
+    def add_outgoing_link(self: "Node", link: "Link"):
         self.outgoing_links.append(link)
         link.source = self
 
@@ -45,7 +45,7 @@ class Node(object):
 
 @dataclass(frozen=True, eq=True)
 class NodeTriple:
-    __slots__ = ('source_id', 'link_label', 'target_id')
+    __slots__ = ("source_id", "link_label", "target_id")
     source_id: str
     link_label: str
     target_id: str
@@ -75,7 +75,8 @@ class LabelGroup(object):
         self.nodes: List[Node] = nodes
         self.node_triples: Set[NodeTriple] = {
             NodeTriple(link.source_id, link.label, link.target_id)
-            for node in self.nodes for link in chain(node.incoming_links, node.outgoing_links)
+            for node in self.nodes
+            for link in chain(node.incoming_links, node.outgoing_links)
         }
         self.size: int = len(nodes)
 
@@ -84,13 +85,13 @@ class LabelGroup(object):
 
     # noinspection PyUnusedLocal
     @staticmethod
-    def group_by_structures(group: 'LabelGroup', pred_group: 'LabelGroup'):
+    def group_by_structures(group: "LabelGroup", pred_group: "LabelGroup"):
         """
-            A structure of a node is defined by its links, or we can treat it as a set of triple.
-            Unbounded nodes should be assumed to be different, therefore a node have unbounded nodes will have
-            it own structure group.
-            We need not consider triple that are impossible to map to node in pred_group. This trick will improve
-            the performance.
+        A structure of a node is defined by its links, or we can treat it as a set of triple.
+        Unbounded nodes should be assumed to be different, therefore a node have unbounded nodes will have
+        it own structure group.
+        We need not consider triple that are impossible to map to node in pred_group. This trick will improve
+        the performance.
         """
         # TODO: implement it
         return [StructureGroup([n]) for n in group.nodes]
@@ -133,7 +134,7 @@ class DependentGroups(object):
             if (triple.source_id, triple.target_id) not in self.x_pairs:
                 self.x_pairs[triple.source_id, triple.target_id] = []
             self.x_pairs[triple.source_id, triple.target_id].append(triple.link_label)
-        
+
     def get_n_permutations(self):
         n_permutation = 1
         for pair_group in self.pair_groups:
@@ -154,7 +155,9 @@ class Bijection(object):
         self.x2prime: Dict[str, str] = {}
 
     @staticmethod
-    def construct_from_mapping(mapping: List[Tuple[Optional[int], Optional[int]]]) -> 'Bijection':
+    def construct_from_mapping(
+        mapping: List[Tuple[Optional[int], Optional[int]]]
+    ) -> "Bijection":
         """
         :param mapping: a list of map from x' => x
         """
@@ -163,7 +166,7 @@ class Bijection(object):
         self.x2prime = {x: x_prime for x_prime, x in mapping}
         return self
 
-    def extends(self, bijection: 'Bijection') -> 'Bijection':
+    def extends(self, bijection: "Bijection") -> "Bijection":
         another = Bijection()
         another.prime2x = dict(self.prime2x)
         another.prime2x.update(bijection.prime2x)
@@ -171,7 +174,7 @@ class Bijection(object):
         another.x2prime.update(bijection.x2prime)
         return another
 
-    def extends_(self, bijection: 'Bijection') -> None:
+    def extends_(self, bijection: "Bijection") -> None:
         self.prime2x.update(bijection.prime2x)
         self.x2prime.update(bijection.x2prime)
 
@@ -207,7 +210,9 @@ class ScoringFn:
         return int(pred_predicate == target_predicate)
 
 
-def find_best_map(dependent_group: DependentGroups, bijection: Bijection, scoring_fn: ScoringFn) -> Bijection:
+def find_best_map(
+    dependent_group: DependentGroups, bijection: Bijection, scoring_fn: ScoringFn
+) -> Bijection:
     terminate_index: int = len(dependent_group.pair_groups)
     # This code find the size of this
     # array: sum([min(gold_group.size, pred_group.size) for gold_group, pred_group in dependent_group.groups])
@@ -232,9 +237,12 @@ def find_best_map(dependent_group: DependentGroups, bijection: Bijection, scorin
             for group_map in iter_group_maps(X, X_prime, call_args.bijection):
                 bijection = Bijection.construct_from_mapping(group_map)
 
-                call_stack.append(FindBestMapArgs(
-                    group_index=call_args.group_index + 1,
-                    bijection=call_args.bijection.extends(bijection)))
+                call_stack.append(
+                    FindBestMapArgs(
+                        group_index=call_args.group_index + 1,
+                        bijection=call_args.bijection.extends(bijection),
+                    )
+                )
 
         if len(call_stack) == 0:
             break
@@ -242,7 +250,9 @@ def find_best_map(dependent_group: DependentGroups, bijection: Bijection, scorin
     return best_map
 
 
-def get_unbounded_nodes(X: LabelGroup, is_bounded_func: Callable[[str], bool]) -> List[Node]:
+def get_unbounded_nodes(
+    X: LabelGroup, is_bounded_func: Callable[[str], bool]
+) -> List[Node]:
     """Get nodes of a label group which have not been bounded by a bijection"""
     unbounded_nodes = []
 
@@ -258,7 +268,9 @@ def get_unbounded_nodes(X: LabelGroup, is_bounded_func: Callable[[str], bool]) -
     return unbounded_nodes
 
 
-def get_common_unbounded_nodes(X: LabelGroup, X_prime: LabelGroup, bijection: Bijection) -> Set[str]:
+def get_common_unbounded_nodes(
+    X: LabelGroup, X_prime: LabelGroup, bijection: Bijection
+) -> Set[str]:
     """Finding unbounded nodes in X and X_prime that have same labels"""
     unbounded_X = get_unbounded_nodes(X, bijection.is_gold_node_bounded)
     unbounded_X_prime = get_unbounded_nodes(X_prime, bijection.is_pred_node_bounded)
@@ -275,7 +287,9 @@ def get_common_unbounded_nodes(X: LabelGroup, X_prime: LabelGroup, bijection: Bi
             labeled_unbounded_X_prime[x.label] = []
         labeled_unbounded_X_prime[x.label].append(x)
 
-    common_unbounded_nodes = set(labeled_unbounded_X.keys()).intersection(labeled_unbounded_X_prime.keys())
+    common_unbounded_nodes = set(labeled_unbounded_X.keys()).intersection(
+        labeled_unbounded_X_prime.keys()
+    )
     return common_unbounded_nodes
 
 
@@ -314,7 +328,9 @@ def group_dependent_elements(dependency_map: List[List[int]]) -> List[int]:
     return dependency_groups
 
 
-def split_by_dependency(map_groups: List[PairLabelGroup], bijection: Bijection) -> List[DependentGroups]:
+def split_by_dependency(
+    map_groups: List[PairLabelGroup], bijection: Bijection
+) -> List[DependentGroups]:
     """This method takes a list of groups (X, X') and group them based on their dependencies.
     D = {D1, D2, …} s.t for all Di, Dj, (Xi, Xi') in Di, (Xj, Xj’) in Dj, they are independent
 
@@ -349,8 +365,9 @@ def split_by_dependency(map_groups: List[PairLabelGroup], bijection: Bijection) 
 
 
 # noinspection PyUnusedLocal
-def iter_group_maps(X: LabelGroup, X_prime: LabelGroup,
-                    bijection: Bijection) -> Generator[List[Tuple[int, int]], None, None]:
+def iter_group_maps(
+    X: LabelGroup, X_prime: LabelGroup, bijection: Bijection
+) -> Generator[List[Tuple[int, int]], None, None]:
     if X.size < X_prime.size:
         return iter_group_maps_general_approach(X, X_prime)
     else:
@@ -358,7 +375,9 @@ def iter_group_maps(X: LabelGroup, X_prime: LabelGroup,
         return iter_group_maps_using_grouping(X_prime, G)
 
 
-def iter_group_maps_general_approach(X: LabelGroup, X_prime: LabelGroup) -> Generator[List[Tuple[int, int]], None, None]:
+def iter_group_maps_general_approach(
+    X: LabelGroup, X_prime: LabelGroup
+) -> Generator[List[Tuple[int, int]], None, None]:
     """
     Generate all mapping from X to X_prime
     NOTE: |X| < |X_prime|
@@ -378,7 +397,9 @@ def iter_group_maps_general_approach(X: LabelGroup, X_prime: LabelGroup) -> Gene
         yield mapping
 
 
-def iter_group_maps_using_grouping(X_prime: LabelGroup, G: List[StructureGroup]) -> Generator[List[Tuple[int, int]], None, None]:
+def iter_group_maps_using_grouping(
+    X_prime: LabelGroup, G: List[StructureGroup]
+) -> Generator[List[Tuple[int, int]], None, None]:
     """
     Generate all mapping from X_prime to G (nodes in X grouped by their structures)
     NOTE: |X_prime| <= |X|
@@ -390,7 +411,9 @@ def iter_group_maps_using_grouping(X_prime: LabelGroup, G: List[StructureGroup])
     terminate_index: int = X_prime.size
 
     call_stack: List[IterGroupMapsUsingGroupingArgs] = [
-        IterGroupMapsUsingGroupingArgs(node_index=0, bijection=bijection, G_sizes=G_sizes)
+        IterGroupMapsUsingGroupingArgs(
+            node_index=0, bijection=bijection, G_sizes=G_sizes
+        )
     ]
 
     while True:
@@ -419,21 +442,27 @@ def iter_group_maps_using_grouping(X_prime: LabelGroup, G: List[StructureGroup])
 
                 call_stack.append(
                     IterGroupMapsUsingGroupingArgs(
-                        node_index=call_args.node_index + 1, bijection=bijection, G_sizes=G_sizes))
+                        node_index=call_args.node_index + 1,
+                        bijection=bijection,
+                        G_sizes=G_sizes,
+                    )
+                )
 
         if len(call_stack) == 0:
             break
 
 
-def prepare_args(gold_sm: 'SemanticModel', pred_sm: 'SemanticModel') -> List[PairLabelGroup]:
+def prepare_args(
+    gold_sm: "SemanticModel", pred_sm: "SemanticModel"
+) -> List[PairLabelGroup]:
     """Prepare data for evaluation
 
-        + data_node_mode = 0, mean we don't touch anything (note that the label of data_node must be unique)
-        + data_node_mode = 1, mean we ignore label of data node (convert it to DATA_NODE, DATA_NODE2 if there are duplication columns)
-        + data_node_mode = 2, mean we ignore data node
+    + data_node_mode = 0, mean we don't touch anything (note that the label of data_node must be unique)
+    + data_node_mode = 1, mean we ignore label of data node (convert it to DATA_NODE, DATA_NODE2 if there are duplication columns)
+    + data_node_mode = 2, mean we ignore data node
     """
 
-    def convert_graph(graph: 'SemanticModel'):
+    def convert_graph(graph: "SemanticModel"):
         node_index: Dict[str, Node] = {}
 
         for v in graph.iter_nodes():
@@ -466,45 +495,62 @@ def prepare_args(gold_sm: 'SemanticModel', pred_sm: 'SemanticModel') -> List[Pai
             label2nodes[node.label] = ([], [])
         label2nodes[node.label][1].append(node)
 
-    return [PairLabelGroup(label, LabelGroup(g[0]), LabelGroup(g[1])) for label, g in label2nodes.items()]
+    return [
+        PairLabelGroup(label, LabelGroup(g[0]), LabelGroup(g[1]))
+        for label, g in label2nodes.items()
+    ]
 
 
-def eval_score(dependent_groups: DependentGroups, bijection: Bijection, scoring_fn: ScoringFn) -> float:
+def eval_score(
+    dependent_groups: DependentGroups, bijection: Bijection, scoring_fn: ScoringFn
+) -> float:
     x_pairs = dependent_groups.x_pairs
     mapped_xprime_triples = {}
     for triple in dependent_groups.X_prime_triples:
-        if triple.source_id not in bijection.prime2x or triple.target_id not in bijection.prime2x:
+        if (
+            triple.source_id not in bijection.prime2x
+            or triple.target_id not in bijection.prime2x
+        ):
             continue
-        
+
         s = bijection.prime2x[triple.source_id]
         o = bijection.prime2x[triple.target_id]
         if (s, o) in x_pairs:
             if (s, o) not in mapped_xprime_triples:
                 mapped_xprime_triples[(s, o)] = []
             mapped_xprime_triples[(s, o)].append(triple.link_label)
-    
+
     score = 0.0
     for so, edges in mapped_xprime_triples.items():
         if len(x_pairs[so]) == 1:
             gold_edge = x_pairs[so][0]
             # if save some computation time
             if len(edges) > 1:
-                edge = max(edges, key=lambda e: scoring_fn.get_match_score(e, gold_edge))
+                edge = max(
+                    edges, key=lambda e: scoring_fn.get_match_score(e, gold_edge)
+                )
             else:
                 edge = edges[0]
             score += scoring_fn.get_match_score(edge, gold_edge)
         else:
             free_prime_edge_index = set(range(len(edges)))
             for gold_edge in x_pairs[so]:
-                edge_idx = max(free_prime_edge_index, key=lambda idx: scoring_fn.get_match_score(edges[idx], gold_edge))
+                edge_idx = max(
+                    free_prime_edge_index,
+                    key=lambda idx: scoring_fn.get_match_score(edges[idx], gold_edge),
+                )
                 free_prime_edge_index.remove(edge_idx)
                 score += scoring_fn.get_match_score(edges[edge_idx], gold_edge)
-            
+
     return score
 
 
-def precision_recall_f1(gold_sm: 'SemanticModel', pred_sm: 'SemanticModel',
-                        scoring_fn: Optional[ScoringFn] = None, debug_dir: str = None):
+def precision_recall_f1(
+    gold_sm: "SemanticModel",
+    pred_sm: "SemanticModel",
+    scoring_fn: Optional[ScoringFn] = None,
+    debug_dir: str = None,
+):
     if scoring_fn is None:
         scoring_fn = ScoringFn()
     pair_groups: List[PairLabelGroup] = prepare_args(gold_sm, pred_sm)
@@ -522,10 +568,17 @@ def precision_recall_f1(gold_sm: 'SemanticModel', pred_sm: 'SemanticModel',
             map_groups.append(pair)
 
     bijection = Bijection.construct_from_mapping(mapping)
-    list_of_dependent_groups: List[DependentGroups] = split_by_dependency(map_groups, bijection)
+    list_of_dependent_groups: List[DependentGroups] = split_by_dependency(
+        map_groups, bijection
+    )
 
     best_bijections = []
-    n_permutations = sum([dependent_groups.get_n_permutations() for dependent_groups in list_of_dependent_groups])
+    n_permutations = sum(
+        [
+            dependent_groups.get_n_permutations()
+            for dependent_groups in list_of_dependent_groups
+        ]
+    )
 
     # TODO: remove debugging code or change to logging
     if n_permutations > 50000:
@@ -537,7 +590,9 @@ def precision_recall_f1(gold_sm: 'SemanticModel', pred_sm: 'SemanticModel',
             pred_sm.draw(os.path.join(debug_dir, "/pred.png"))
         for dependent_groups in list_of_dependent_groups:
             print(dependent_groups.pair_groups)
-        raise PermutationExploding("Cannot run evaluation because number of permutation is too high.")
+        raise PermutationExploding(
+            "Cannot run evaluation because number of permutation is too high."
+        )
 
     for dependent_groups in list_of_dependent_groups:
         best_bijections.append(find_best_map(dependent_groups, bijection, scoring_fn))
@@ -571,13 +626,13 @@ def precision_recall_f1(gold_sm: 'SemanticModel', pred_sm: 'SemanticModel',
         bijection.prime2x.pop(None)
 
     return {
-        'f1': f1,
-        'precision': precision,
-        'recall': recall,
-        '_bijection': bijection,
+        "f1": f1,
+        "precision": precision,
+        "recall": recall,
+        "_bijection": bijection,
         "_n_corrects": TP,
         "_n_examples": len(all_groups.X_triples),
         "_n_predictions": len(all_groups.X_prime_triples),
         "_gold_triples": all_groups.X_triples,
-        "_pred_triples": all_groups.X_prime_triples
+        "_pred_triples": all_groups.X_prime_triples,
     }

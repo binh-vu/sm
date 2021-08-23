@@ -1,27 +1,37 @@
 import functools
 
 import orjson
-from typing import Callable, Tuple, Any, Dict
+from typing import Callable, Tuple, Any, Dict, Optional
 
 from sm.misc.remote_dict import PickleRedisStore, PickleRocksDBStore
 
 
-def cache_func(dbfile: str = "/tmp/cache_func.db", namespace: str = "",
-               get_key: Callable[[str, str, Tuple[Any, ...], Dict[str, Any]], str] = None,
-               instance_method: bool = False,
-               cache={}):
-    """
-    Parameters
-    ----------
-    dbfile: can be redis (e.g., "redis://localhost:6379") or local file
-    namespace
-    get_key
-    instance_method
+CACHE = {}
 
-    Returns
-    -------
+
+def cache_func(
+    dbfile: str = "/tmp/cache_func.db",
+    namespace: str = "",
+    get_key: Callable[[str, str, Tuple[Any, ...], Dict[str, Any]], str] = None,
+    instance_method: bool = False,
+    cache: Optional[dict] = None,
+):
+    """Cache a function
+
+    Args:
+        dbfile: can be redis (e.g., "redis://localhost:6379") or rocksdb (local file)
+        namespace:
+        get_key:
+        instance_method:
+        cache:
+
+    Returns:
 
     """
+    global CACHE
+    if cache is None:
+        cache = CACHE
+
     if dbfile not in cache:
         if dbfile.startswith("redis://"):
             db = PickleRedisStore(dbfile)
@@ -34,8 +44,10 @@ def cache_func(dbfile: str = "/tmp/cache_func.db", namespace: str = "",
         get_key = default_get_key
 
     if instance_method:
+
         def wrapper_instance_fn(func):
             fn_name = func.__name__
+
             @functools.wraps(func)
             def fn(*args, **kwargs):
                 key = get_key(namespace, fn_name, args[1:], kwargs)
@@ -49,6 +61,7 @@ def cache_func(dbfile: str = "/tmp/cache_func.db", namespace: str = "",
 
     def wrapper_fn(func):
         fn_name = func.__name__
+
         @functools.wraps(func)
         def fn(*args, **kwargs):
             key = get_key(namespace, fn_name, args, kwargs)
@@ -62,4 +75,6 @@ def cache_func(dbfile: str = "/tmp/cache_func.db", namespace: str = "",
 
 
 def default_get_key(namespace, func_name, args, kwargs):
-    return orjson.dumps({"ns": namespace, "fn": func_name, "a": args, "kw": kwargs}).decode()
+    return orjson.dumps(
+        {"ns": namespace, "fn": func_name, "a": args, "kw": kwargs}
+    ).decode()

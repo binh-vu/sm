@@ -96,7 +96,7 @@ class DataNode:
         return False
 
 
-class LiteralNodeDataType(enum.Enum):
+class LiteralNodeDataType(str, enum.Enum):
     String = "string"
     Entity = "entity-id"
 
@@ -281,7 +281,7 @@ class SemanticModel:
             sem_types.add(SemanticType(u.abs_uri, e.abs_uri, u.rel_uri, e.rel_uri))
         return sem_types
 
-    def to_json(self):
+    def to_dict(self):
         return {
             "version": 1,
             "nodes": [asdict(u) for u in self.iter_nodes()],
@@ -290,10 +290,10 @@ class SemanticModel:
 
     def to_json_file(self, outfile: Union[str, Path]):
         with open(outfile, "wb") as f:
-            f.write(orjson.dumps(self.to_json(), option=orjson.OPT_INDENT_2))
+            f.write(orjson.dumps(self.to_dict(), option=orjson.OPT_INDENT_2))
 
     @staticmethod
-    def from_json(record: dict):
+    def from_dict(record: dict):
         sm = SemanticModel()
         for u in record['nodes']:
             if 'col_index' in u:
@@ -313,7 +313,7 @@ class SemanticModel:
     def from_json_file(infile: Union[str, Path]):
         with open(infile, "rb") as f:
             record = orjson.loads(f.read())
-            return SemanticModel.from_json(record)
+            return SemanticModel.from_dict(record)
 
     def draw(self, filename=None, no_display: bool = False, max_char_per_line: int = 20):
         """
@@ -530,10 +530,3 @@ class SemanticModel:
                 plt.show()
             finally:
                 fobj.close()
-
-
-if __name__ == '__main__':
-    record = grams.misc.deserialize_json("/workspace/sm-dev/grams/examples/ground-truth/table_01/version.01.json")[
-        'semantic_models'][0]
-    sm = SemanticModel.from_json(record)
-    print(list(sm.iter_nodes()))

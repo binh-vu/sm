@@ -37,7 +37,7 @@ class ColumnBasedTable:
             [Column(c.index, c.name, c.values[start_row:end_row]) for c in self.columns],
         )
 
-    def to_json(self):
+    def to_dict(self):
         return {
             "version": "2",
             "table_id": self.table_id,
@@ -45,7 +45,8 @@ class ColumnBasedTable:
         }
 
     @staticmethod
-    def from_json(record: dict):
+    def from_dict(record: dict):
+        assert record.get('version', None) == "2"
         return ColumnBasedTable(record['table_id'], [Column(**col) for col in record['columns']])
 
     @staticmethod
