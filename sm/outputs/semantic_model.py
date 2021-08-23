@@ -161,6 +161,15 @@ class SemanticModel:
 
     def get_n_edges(self):
         return len(self.g.edges)
+    
+    def in_degree(self, nid: str) -> int:
+        return self.g.in_degree(nid)
+    
+    def out_degree(self, nid: str) -> int:
+        return self.g.out_degree(nid)
+
+    def degree(self, nid: str) -> int:
+        return self.g.degree(nid)
 
     def get_node(self, nid: str) -> Optional[Node]:
         if nid not in self.g.nodes:
@@ -226,6 +235,9 @@ class SemanticModel:
 
     def remove_node(self, node_id: str):
         self.g.remove_node(node_id)
+    
+    def remove_edge(self, edge: Edge):
+        self.g.remove_edge(edge.source, edge.target, edge.id)
 
     def remove_edges_between_nodes(self, source_id: str, target_id: str, eid: Optional[str] = None):
         if eid is None:
