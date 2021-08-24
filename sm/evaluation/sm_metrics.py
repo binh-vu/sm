@@ -1,11 +1,13 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+
 import math
 import os
 from dataclasses import dataclass
 from itertools import permutations, chain
 from typing import Dict, Tuple, List, Set, Optional, Callable, Generator, TYPE_CHECKING
 
+from loguru import logger
 from pyrsistent import pvector, PVector
 
 if TYPE_CHECKING:
@@ -18,7 +20,7 @@ Convention: x' and x are nodes in predicted model and gold model, respectively.
 """
 
 
-class PermutationExploding(Exception):
+class PermutationExplosion(Exception):
     pass
 
 
@@ -208,6 +210,19 @@ class ScoringFn:
     # noinspection PyMethodMayBeStatic
     def get_match_score(self, pred_predicate: str, target_predicate: str) -> float:
         return int(pred_predicate == target_predicate)
+
+
+@dataclass
+class PrecisionRecallF1Output:
+    precision: float
+    recall: float
+    f1: float
+    bijection: Bijection
+    n_corrects: float  # float as we allow for partial correctness
+    n_examples: int
+    n_predictions: int
+    gold_triples: Set[NodeTriple]
+    pred_triples: Set[NodeTriple]
 
 
 def find_best_map(
@@ -550,7 +565,7 @@ def precision_recall_f1(
     pred_sm: "SemanticModel",
     scoring_fn: Optional[ScoringFn] = None,
     debug_dir: str = None,
-):
+) -> PrecisionRecallF1Output:
     if scoring_fn is None:
         scoring_fn = ScoringFn()
     pair_groups: List[PairLabelGroup] = prepare_args(gold_sm, pred_sm)
@@ -582,15 +597,20 @@ def precision_recall_f1(
 
     # TODO: remove debugging code or change to logging
     if n_permutations > 50000:
-        print("Number of permutation is: %d" % n_permutations)
+        logger.info("Number of permutation is: {}", n_permutations)
 
     if n_permutations > 1000000:
         if debug_dir is not None:
             gold_sm.draw(os.path.join(debug_dir, "/gold.png"))
             pred_sm.draw(os.path.join(debug_dir, "/pred.png"))
+        logger.error(
+            "Permutation explosion: got {} combinations from {} pair groups",
+            n_permutations,
+            len(list_of_dependent_groups),
+        )
         for dependent_groups in list_of_dependent_groups:
-            print(dependent_groups.pair_groups)
-        raise PermutationExploding(
+            logger.info("- {}", dependent_groups.pair_groups)
+        raise PermutationExplosion(
             "Cannot run evaluation because number of permutation is too high."
         )
 
@@ -625,14 +645,14 @@ def precision_recall_f1(
     if None in bijection.prime2x:
         bijection.prime2x.pop(None)
 
-    return {
-        "f1": f1,
-        "precision": precision,
-        "recall": recall,
-        "_bijection": bijection,
-        "_n_corrects": TP,
-        "_n_examples": len(all_groups.X_triples),
-        "_n_predictions": len(all_groups.X_prime_triples),
-        "_gold_triples": all_groups.X_triples,
-        "_pred_triples": all_groups.X_prime_triples,
-    }
+    return PrecisionRecallF1Output(
+        f1=f1,
+        precision=precision,
+        recall=recall,
+        bijection=bijection,
+        n_corrects=TP,
+        n_examples=len(all_groups.X_triples),
+        n_predictions=len(all_groups.X_prime_triples),
+        gold_triples=all_groups.X_triples,
+        pred_triples=all_groups.X_prime_triples,
+    )
