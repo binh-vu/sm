@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from multiprocessing.pool import Pool, ThreadPool
 from operator import itemgetter
 from pathlib import Path
-from typing import Union, Callable, Any, List, Optional
+from typing import Dict, Generic, TypeVar, Union, Callable, Any, List, Optional, KeysView
 
 from loguru import logger
 from tqdm.auto import tqdm
@@ -202,3 +202,39 @@ class FakeTQDM:
 
     def close(self):
         pass
+
+
+K = TypeVar('K')
+V = TypeVar('V')
+V2 = TypeVar('V2')
+
+
+class DictProxy(Dict[K, V2]):
+    """Dictionary proxy to access objects' property
+
+    Args:
+        odict: dictionary of object
+        access: function to access property of an object
+    """
+    
+    def __init__(self, odict: Dict[K, V], access: Callable[[V], V2]):
+        self.odict = odict
+        self.access = access
+
+    def __iter__(self):
+        return self.odict.__iter__()
+
+    def __getitem__(self, item):
+        return self.access(self.odict[item])
+
+    def __contains__(self, item):
+        return item in self.odict
+
+    def keys(self) -> KeysView[K]:
+        return self.odict.keys()
+
+    def values(self):
+        return (self.access(v) for v in self.odict.values())
+
+    def items(self):
+        return ((k, self.access(v)) for k, v in self.odict.items())
