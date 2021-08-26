@@ -3,8 +3,8 @@ import functools
 import orjson
 from typing import Callable, Tuple, Any, Dict, Optional
 
-from sm.misc.remote_dict import PickleRedisStore, PickleRocksDBStore
-
+from sm.misc.big_dict.rocksdb import PickleRocksDBStore
+from sm.misc.big_dict.redis import PickleRedisStore
 
 CACHE = {}
 

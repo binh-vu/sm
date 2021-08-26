@@ -45,13 +45,13 @@ def cta(
     pred_cta = _get_cta(pred_sm, id_props)
 
     if scoring_fn is None:
-        scoring_fn = lambda pred, gold: int(pred == gold)
+        scoring_fn = sm_metrics.ScoringFn()
 
     score = 0.0
     for cindex in set(gold_cta.keys()).intersection(pred_cta.keys()):
         gc = gold_cta[cindex]
         pc = pred_cta[cindex]
-        score += scoring_fn(pc, gc)
+        score += scoring_fn.get_match_score(pc, gc)
 
     if len(pred_cta) == 0:
         precision = 1.0
@@ -85,6 +85,8 @@ def _get_cta(sm: SemanticModel, id_props: Set[str]) -> Dict[str, str]:
             id_edges = [outedge for outedge in outedges if outedge.abs_uri in id_props]
             if len(id_edges) > 1:
                 raise Exception("Haven't supported multiple subject columns yet")
+            if len(id_edges) == 0:
+                continue
             dnode: DataNode = sm.get_node(id_edges[0].target)
             col2class[str(dnode.col_index)] = n.abs_uri
     return col2class

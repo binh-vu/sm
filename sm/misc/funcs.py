@@ -216,7 +216,7 @@ class DictProxy(Dict[K, V2]):
         odict: dictionary of object
         access: function to access property of an object
     """
-    
+
     def __init__(self, odict: Dict[K, V], access: Callable[[V], V2]):
         self.odict = odict
         self.access = access

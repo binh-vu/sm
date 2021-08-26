@@ -146,6 +146,19 @@ def deserialize_json(fpath: Union[str, Path]):
         return orjson.loads(f.read())
 
 
+def deserialize_byte_lines(fpath: Union[str, Path], n_lines: Optional[int]=None):
+    """Deserialize byte lines, each line should never have byte b'\n'."""
+    with get_open_fn(str(fpath))(str(fpath), "rb") as f:
+        if n_lines is None:
+            return [line for line in f]
+        lst = []
+        for line in f:
+            lst.append(line)
+            if len(lst) >= n_lines:
+                break
+        return lst
+
+
 def serialize_byte_lines(objects: Sequence[bytes], fpath: Union[str, Path]):
     """Serialize byte lines, each line should never have byte b'\n'."""
     with get_open_fn(str(fpath))(str(fpath), "wb") as f:
