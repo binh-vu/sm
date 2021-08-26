@@ -5,7 +5,6 @@ from typing import Dict, Union, Any, Callable
 import orjson
 import rocksdb
 
-from sm.misc.funcs import identity_func
 from sm.misc.big_dict.inmem import K, V, CacheDictStore
 
 
@@ -15,7 +14,7 @@ class RocksDBStore(Dict[K, V]):
         if deserialize is not None:
             self.deserialize = deserialize
         else:
-            self.deserialize = identity_func
+            self.deserialize = bytes2str
 
     def __contains__(self, key):
         return self.db.get(key.encode()) is not None
@@ -62,3 +61,7 @@ class PickleRocksDBStore(RocksDBStore[K, V]):
     def __setitem__(self, key: str, value: Any):
         value = pickle.dumps(value)
         self.db.put(key.encode(), value)
+
+
+def bytes2str(s: bytes) -> str:
+    return s.decode()
