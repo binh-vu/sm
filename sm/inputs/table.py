@@ -1,5 +1,5 @@
 from collections import OrderedDict, defaultdict
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import pandas as pd
 
@@ -44,9 +44,12 @@ class ColumnBasedTable:
             "columns": [col.__dict__ for col in self.columns],
         }
 
+    def __getitem__(self, item: Tuple[int, int]):
+        return self.columns[item[1]][item[0]]
+
     @staticmethod
     def from_dict(record: dict):
-        assert record.get('version', None) == "2"
+        assert record.get('version', None) == "2", record.get('version', None)
         return ColumnBasedTable(record['table_id'], [Column(**col) for col in record['columns']])
 
     @staticmethod
