@@ -430,7 +430,7 @@ class SemanticModel:
         else:
             fobj = None
 
-        bijection = sm_metrics.precision_recall_f1(gold_sm, self)['_bijection']
+        bijection = sm_metrics.precision_recall_f1(gold_sm, self).bijection
         dot_g = pydot.Dot(graph_type='digraph')
         data_nodes = set()
         for uid, u in self.g.nodes.data("data"):
