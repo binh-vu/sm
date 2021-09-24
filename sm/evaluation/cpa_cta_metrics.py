@@ -40,9 +40,14 @@ def cta(
     pred_sm: SemanticModel,
     id_props: Set[str],
     scoring_fn: Optional[sm_metrics.ScoringFn] = None,
+    ignored_columns: Optional[Set[str]] = None,
 ) -> CTAEvalOutput:
     gold_cta = _get_cta(gold_sm, id_props)
     pred_cta = _get_cta(pred_sm, id_props)
+
+    if ignored_columns is not None:
+        gold_cta = {k: v for k, v in gold_cta.items() if k not in ignored_columns}
+        pred_cta = {k: v for k, v in pred_cta.items() if k not in ignored_columns}
 
     if scoring_fn is None:
         scoring_fn = sm_metrics.ScoringFn()
