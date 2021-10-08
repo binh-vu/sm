@@ -12,6 +12,11 @@ class ColumnBasedTable:
         self.columns = columns
         self.index2columns = {col.index: col for col in columns}
         self.df = self.as_dataframe()
+    
+    def shape(self) -> Tuple[int, int]:
+        if len(self.columns) == 0:
+            return 0, 0
+        return len(self.columns[0].values), len(self.columns)
 
     def get_column_by_index(self, col_idx: int) -> Column:
         return self.index2columns[col_idx]
