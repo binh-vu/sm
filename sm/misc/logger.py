@@ -1,13 +1,17 @@
+from __future__ import annotations
+import threading
 from abc import abstractmethod
 from contextlib import contextmanager
 from typing import Optional, Callable
 
-_logger = None
+
+_container = threading.local()
+_container.logger = None
 
 
 class ContextLogger:
     @abstractmethod
-    def log(self, msg: str, data: dict, mutual_data: dict):
+    def log(self, ns: str, data: dict, mutual_data: dict):
         pass
 
     @abstractmethod
@@ -16,27 +20,27 @@ class ContextLogger:
 
 
 @contextmanager
-def context_logger(context: dict, constructor: Optional[Callable[[dict], ContextLogger]] = None):
-    global _logger
+def context_logger(
+    context: dict, constructor: Optional[Callable[[dict], ContextLogger]] = None
+):
+    global _container
 
-    if _logger is not None:
+    if _container.logger is not None:
         raise Exception("Can't create nested logger")
 
     try:
-        if constructor is None:
-            _logger = ContextLogger()
-        else:
-            _logger = constructor(context)
-        yield _logger
+        _container.logger = (
+            ContextLogger() if constructor is None else constructor(context)
+        )
+        yield _container.logger
     finally:
-        _logger.clear()
-        _logger = None
+        if _container.logger is not None:
+            _container.logger.clear()
+        _container.logger = None
 
 
-def log(msg: str, **kwargs):
-    """Log data into a container so that we
-    Returns:
-    """
-    global _logger
-    _logger.log(msg, kwargs)
+def log(ns: str, data: Optional[dict] = None, mutual_data: Optional[dict] = None):
+    global _container
 
+    if _container.logger is not None:
+        _container.logger.log(ns, data or {}, mutual_data or {})
