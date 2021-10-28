@@ -131,14 +131,16 @@ def serialize_json(
         if use_pyjson:
             f.write(json.dumps(obj, indent=indent).encode())
         else:
-            if indent is not None:
+            if indent is None:
+                f.write(orjson.dumps(obj, option=orjson.OPT_SERIALIZE_DATACLASS))
+            elif indent == 2:
+                f.write(orjson.dumps(obj, option=orjson.OPT_SERIALIZE_DATACLASS | orjson.OPT_INDENT_2))
+            else:
                 f.write(
                     ujson.dumps(
                         obj, indent=indent, escape_forward_slashes=False
                     ).encode()
                 )
-            else:
-                f.write(orjson.dumps(obj, option=orjson.OPT_SERIALIZE_DATACLASS))
 
 
 def deserialize_json(fpath: Union[str, Path]):
