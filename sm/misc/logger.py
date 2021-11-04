@@ -2,7 +2,7 @@ from __future__ import annotations
 import threading
 from abc import abstractmethod
 from contextlib import contextmanager
-from typing import Optional, Callable
+from typing import Any, Optional, Callable
 
 
 _container = threading.local()
@@ -21,13 +21,16 @@ class ContextLogger:
 
 @contextmanager
 def context_logger(
-    context: dict, constructor: Optional[Callable[[dict], ContextLogger]] = None
+    context: dict,
+    constructor: Optional[Callable[[dict], ContextLogger]] = None,
+    disable: bool = False,
 ):
     global _container
+    if disable:
+        yield None
+        return
 
-    if _container.logger is not None:
-        raise Exception("Can't create nested logger")
-
+    previous_logger = _container.logger
     try:
         _container.logger = (
             ContextLogger() if constructor is None else constructor(context)
@@ -36,11 +39,31 @@ def context_logger(
     finally:
         if _container.logger is not None:
             _container.logger.clear()
-        _container.logger = None
+        _container.logger = previous_logger
 
 
-def log(ns: str, data: Optional[dict] = None, mutual_data: Optional[dict] = None):
+def global_logger(
+    context: dict, constructor: Optional[Callable[[dict], ContextLogger]] = None
+):
+    global _container
+    if _container.logger is not None:
+        raise Exception("Can only register global logger before registering any logger")
+
+    _container.logger = ContextLogger() if constructor is None else constructor(context)
+
+
+def log(ns: str, **kwargs: Any):
+    """Log objects. It accepts a special key: `mutual_data`, which is a dictionary
+    of mutual objects. Every object in this dictionary will be deep copy to prevent any
+    changes in the original object.
+    """
     global _container
 
     if _container.logger is not None:
-        _container.logger.log(ns, data or {}, mutual_data or {})
+        if "mutual_data" in kwargs:
+            mutual_data = kwargs.pop("mutual_data")
+        else:
+            mutual_data = {}
+        _container.logger.log(ns, kwargs, mutual_data)
+        return True
+    return False

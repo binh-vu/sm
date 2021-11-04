@@ -14,7 +14,9 @@ class Example(Generic[T]):
     table: T
 
 
-def load(data_dir: Union[str, Path], table_deser: Callable[[dict], T]) -> List[Example[T]]:
+def load(
+    data_dir: Union[str, Path], table_deser: Callable[[dict], T]
+) -> List[Example[T]]:
     """Load dataset from a folder. Assuming the following structure:
     - descriptions: (containing semantic descriptions of tables)
         - <table_fs_id>
@@ -35,7 +37,7 @@ def load(data_dir: Union[str, Path], table_deser: Callable[[dict], T]) -> List[E
     """
     data_dir = Path(data_dir)
     examples = []
-    for infile in (data_dir / "tables").iterdir():
+    for infile in sorted((data_dir / "tables").iterdir()):
         if infile.name.startswith("."):
             continue
         assert infile.name.endswith(".json")

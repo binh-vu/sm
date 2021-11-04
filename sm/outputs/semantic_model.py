@@ -3,7 +3,7 @@ import enum
 import tempfile
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import Optional, Union, Iterable, List, Set, Literal
+from typing import Any, Optional, Union, Iterable, List, Set, Literal
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -153,9 +153,9 @@ class Edge:
 class SemanticModel:
     def __init__(self, graph: Optional[nx.Graph] = None, edge_id_counter: int = 0):
         if graph is not None:
-            self.g = graph
+            self.g: Any = graph
         else:
-            self.g = nx.MultiDiGraph()
+            self.g: Any = nx.MultiDiGraph()
         self.edge_id_counter = edge_id_counter
 
     def get_n_nodes(self):
@@ -173,22 +173,21 @@ class SemanticModel:
     def degree(self, nid: str) -> int:
         return self.g.degree(nid)
 
-    def get_node(self, nid: str) -> Optional[Node]:
-        if nid not in self.g.nodes:
-            return None
+    def get_node(self, nid: str) -> Node:
         return self.g.nodes[nid]["data"]
 
-    def get_data_node(self, column_index: int) -> Optional[DataNode]:
+    def get_data_node(self, column_index: int) -> DataNode:
         for uid, u in self.g.nodes.data("data"):
-            if not u.is_class_node and u.col_index == column_index:
+            if isinstance(u, DataNode) and u.col_index == column_index:
                 return u
-        return None
+        raise KeyError(column_index)
 
-    def get_literal_node(self, value: str) -> Optional[LiteralNode]:
-        for uid, u in self.g.nodes.data("data"):
-            if not u.is_literal_node and u.value == value:
+    def get_literal_node(self, value: str) -> LiteralNode:
+        """Get literal node by value O(n). Throw error when the value does not found"""
+        for uid, u in self.g.nodes.data("data"):  # type: ignore
+            if isinstance(u, LiteralNode) and u.value == value:
                 return u
-        return None
+        raise KeyError(value)
 
     def get_edges_between_nodes(self, source_id: str, target_id: str) -> List[Edge]:
         res = self.g.get_edge_data(source_id, target_id)
@@ -207,8 +206,8 @@ class SemanticModel:
 
     def add_edge(self, edge: Edge):
         self.edge_id_counter += 1
-        edge.id = self.edge_id_counter
-        self.g.add_edge(edge.source, edge.target, key=self.edge_id_counter, data=edge)
+        edge.id = str(self.edge_id_counter)
+        self.g.add_edge(edge.source, edge.target, key=edge.id, data=edge)
 
     def update_node(self, nid: str, node: Node):
         """Update the node content by id"""
@@ -283,6 +282,7 @@ class SemanticModel:
         sem_types = set()
         for u, v, e in self.g.in_edges(dnode.id, data="data"):
             u = self.get_node(u)
+            assert isinstance(u, ClassNode)
             sem_types.add(SemanticType(u.abs_uri, e.abs_uri, u.rel_uri, e.rel_uri))
         return list(sem_types)
 
@@ -371,7 +371,7 @@ class SemanticModel:
         for uid, u in self.g.nodes.data("data"):
             uid = uid.replace(":", "_")
             if u.is_class_node:
-                label = auto_wrap(u.label.replace(":", "\:"), max_char_per_line)
+                label = auto_wrap(u.label.replace(":", r"\:"), max_char_per_line)
                 dot_g.add_node(
                     pydot.Node(
                         name=uid,
@@ -384,7 +384,8 @@ class SemanticModel:
                 )
             elif u.is_data_node:
                 label = auto_wrap(
-                    f"C{u.col_index}\:" + u.label.replace(":", "\:"), max_char_per_line
+                    fr"C{u.col_index}\:" + u.label.replace(":", r"\:"),
+                    max_char_per_line,
                 )
                 dot_g.add_node(
                     pydot.Node(
@@ -410,7 +411,7 @@ class SemanticModel:
         for u, v, e in self.g.edges.data("data"):
             u = u.replace(":", "_")
             v = v.replace(":", "_")
-            label = auto_wrap(e.label.replace(":", "\:"), max_char_per_line)
+            label = auto_wrap(e.label.replace(":", r"\:"), max_char_per_line)
             dot_g.add_edge(
                 pydot.Edge(u, v, label=label, color="brown", fontcolor="black")
             )
@@ -489,7 +490,7 @@ class SemanticModel:
                 else:
                     fillcolor = "mediumseagreen"
 
-                label = auto_wrap(u.label.replace(":", "\:"), max_char_per_line)
+                label = auto_wrap(u.label.replace(":", r"\:"), max_char_per_line)
                 dot_g.add_node(
                     pydot.Node(
                         name=uid.replace(":", "_"),
@@ -504,7 +505,7 @@ class SemanticModel:
                 data_nodes.add(u.col_index)
                 dot_uid = f"C{u.col_index:02d}_{u.label}"
                 label = auto_wrap(
-                    f"C{u.col_index}: " + u.label.replace(":", "\:"), max_char_per_line
+                    f"C{u.col_index}: " + u.label.replace(":", r"\:"), max_char_per_line
                 )
                 dot_g.add_node(
                     pydot.Node(
@@ -526,7 +527,7 @@ class SemanticModel:
                         pydot.Node(
                             name=dot_uid,
                             label=auto_wrap(
-                                u.label.replace(":", "\:"), max_char_per_line
+                                u.label.replace(":", r"\:"), max_char_per_line
                             ),
                             shape="ellipse",
                             style="filled",
@@ -541,7 +542,7 @@ class SemanticModel:
                         pydot.Node(
                             name=dot_uid,
                             label=auto_wrap(
-                                f"C{u.col_index}: " + u.label.replace(":", "\:"),
+                                f"C{u.col_index}: " + u.label.replace(":", r"\:"),
                                 max_char_per_line,
                             ),
                             shape="plaintext",
@@ -551,23 +552,27 @@ class SemanticModel:
                     )
 
         # add edges in pred_sm
-        x_triples = {
-            (
-                uid,
-                e.label,
-                vid
-                if gold_sm.get_node(vid).is_class_node
-                else (gold_sm.get_node(vid).col_index, gold_sm.get_node(vid).label),
-            )
-            for uid, vid, e in gold_sm.g.edges.data("data")
-        }
+        x_triples = set()
+        for uid, vid, e in gold_sm.g.edges.data("data"):
+            e: Edge
+            v = gold_sm.get_node(vid)
+            if isinstance(v, ClassNode):
+                target = vid
+            elif isinstance(v, DataNode):
+                target = (v.col_index, v.label)
+            else:
+                target = v.value
+            x_triples.add((uid, e.label, target))
+
         x_prime_triples = set()
         for uid, vid, e in self.g.edges.data("data"):
             v = self.get_node(vid)
             x_prime_triple = (
                 bijection.prime2x[uid],
                 e.label,
-                bijection.prime2x[vid] if v.is_class_node else (v.col_index, v.label),
+                bijection.prime2x[vid]
+                if isinstance(v, ClassNode)
+                else ((v.col_index, v.label) if isinstance(v, DataNode) else v.value),
             )
             x_prime_triples.add(x_prime_triple)
             if x_prime_triple in x_triples:
@@ -578,14 +583,18 @@ class SemanticModel:
             dot_u = uid.replace(":", "_")
             dot_v = (
                 vid.replace(":", "_")
-                if v.is_class_node
-                else f"C{v.col_index:02d}_{v.label}"
+                if isinstance(v, ClassNode)
+                else (
+                    f"C{v.col_index:02d}_{v.label}"
+                    if isinstance(v, DataNode)
+                    else v.value
+                )
             )
             dot_g.add_edge(
                 pydot.Edge(
                     dot_u,
                     dot_v,
-                    label=auto_wrap(e.label.replace(":", "\:"), max_char_per_line),
+                    label=auto_wrap(e.label.replace(":", r"\:"), max_char_per_line),
                     color=color,
                     fontcolor="black",
                 )
@@ -617,7 +626,7 @@ class SemanticModel:
                         dot_u,
                         dot_v,
                         label=auto_wrap(
-                            x_triple[1].replace(":", "\:"), max_char_per_line
+                            x_triple[1].replace(":", r"\:"), max_char_per_line
                         ),
                         color="gray",
                         fontcolor="black",

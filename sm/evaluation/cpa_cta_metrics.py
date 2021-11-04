@@ -92,7 +92,8 @@ def _get_cta(sm: SemanticModel, id_props: Set[str]) -> Dict[str, str]:
                 raise Exception("Haven't supported multiple subject columns yet")
             if len(id_edges) == 0:
                 continue
-            dnode: DataNode = sm.get_node(id_edges[0].target)
+            dnode = sm.get_node(id_edges[0].target)
+            assert isinstance(dnode, DataNode)
             col2class[str(dnode.col_index)] = n.abs_uri
     return col2class
 
