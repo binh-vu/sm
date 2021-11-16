@@ -4,7 +4,16 @@ from contextlib import contextmanager
 from multiprocessing.pool import Pool, ThreadPool
 from operator import itemgetter
 from pathlib import Path
-from typing import Dict, Generic, TypeVar, Union, Callable, Any, List, Optional, KeysView
+from typing import (
+    Dict,
+    TypeVar,
+    Union,
+    Callable,
+    Any,
+    List,
+    Optional,
+    KeysView,
+)
 
 from loguru import logger
 from tqdm.auto import tqdm
@@ -92,7 +101,12 @@ def get_latest_path(path: Union[str, Path]) -> Optional[str]:
     return str(path.parent / f"{path.stem}.{version:02d}{path.suffix}")
 
 
-def auto_wrap(word: str, max_char_per_line: int, delimiters: List[str] = None, camelcase_split: bool = True) -> str:
+def auto_wrap(
+    word: str,
+    max_char_per_line: int,
+    delimiters: List[str] = None,
+    camelcase_split: bool = True,
+) -> str:
     """
     Treat this as optimization problem, where we trying to minimize the number of line break
     but also maximize the readability in each line, i.e: maximize the number of characters in each lines
@@ -105,14 +119,19 @@ def auto_wrap(word: str, max_char_per_line: int, delimiters: List[str] = None, c
     """
     # split original word by the delimiters
     if delimiters is None:
-        delimiters = [' ', ':', '_', '/']
+        delimiters = [" ", ":", "_", "/"]
 
     sublines: List[str] = [""]
     for i, c in enumerate(word):
         if c not in delimiters:
             sublines[-1] += c
 
-            if camelcase_split and not c.isupper() and i + 1 < len(word) and word[i + 1].isupper():
+            if (
+                camelcase_split
+                and not c.isupper()
+                and i + 1 < len(word)
+                and word[i + 1].isupper()
+            ):
                 # camelcase_split
                 sublines.append("")
         else:
@@ -142,8 +161,9 @@ def flatten_dict(odict: dict, result: Optional[dict] = None, prefix: str = ""):
 
 
 class ParallelMapFnWrapper:
-    def __init__(self, fn):
+    def __init__(self, fn, ignore_error=False):
         self.fn = fn
+        self.ignore_error = ignore_error
 
     def run(self, args):
         idx, r = args
@@ -152,10 +172,21 @@ class ParallelMapFnWrapper:
             return idx, r
         except:
             logger.error(f"[ParallelMap] Error while process item {idx}")
+            if self.ignore_error:
+                return idx, None
             raise
 
 
-def parallel_map(fn, inputs, show_progress=False, progress_desc="", is_parallel=True, use_threadpool=False, n_processes: Optional[int]=None):
+def parallel_map(
+    fn,
+    inputs,
+    show_progress=False,
+    progress_desc="",
+    is_parallel=True,
+    use_threadpool=False,
+    n_processes: Optional[int] = None,
+    ignore_error: bool = False,
+):
     if not is_parallel:
         iter = (fn(item) for item in inputs)
         if show_progress:
@@ -164,14 +195,18 @@ def parallel_map(fn, inputs, show_progress=False, progress_desc="", is_parallel=
 
     if use_threadpool:
         with ThreadPool(processes=n_processes) as pool:
-            iter = pool.imap_unordered(ParallelMapFnWrapper(fn).run, enumerate(inputs))
+            iter = pool.imap_unordered(
+                ParallelMapFnWrapper(fn, ignore_error).run, enumerate(inputs)
+            )
             if show_progress:
                 iter = tqdm(iter, total=len(inputs), desc=progress_desc)
             results = list(iter)
             results.sort(key=itemgetter(0))
     else:
         with Pool(processes=n_processes) as pool:
-            iter = pool.imap_unordered(ParallelMapFnWrapper(fn).run, enumerate(inputs))
+            iter = pool.imap_unordered(
+                ParallelMapFnWrapper(fn, ignore_error).run, enumerate(inputs)
+            )
             if show_progress:
                 iter = tqdm(iter, total=len(inputs), desc=progress_desc)
             results = list(iter)
@@ -185,6 +220,7 @@ def print2file(file_path: Union[str, Path], mode="w", file_only: bool = False):
     Path(file_path).parent.mkdir(exist_ok=True, parents=True)
     origin_print = print
     with open(str(file_path), mode) as f:
+
         def print_fn(*args):
             if not file_only:
                 origin_print(*args)
@@ -196,17 +232,9 @@ def print2file(file_path: Union[str, Path], mode="w", file_only: bool = False):
             pass
 
 
-class FakeTQDM:
-    def update(self, *args):
-        pass
-
-    def close(self):
-        pass
-
-
-K = TypeVar('K')
-V = TypeVar('V')
-V2 = TypeVar('V2')
+K = TypeVar("K")
+V = TypeVar("V")
+V2 = TypeVar("V2")
 
 
 class DictProxy(Dict[K, V2]):

@@ -1,7 +1,9 @@
 import functools
+import os
+from pathlib import Path
 
 import orjson
-from typing import Callable, Tuple, Any, Dict, Optional
+from typing import Callable, Tuple, Any, Dict, Optional, Union
 
 from sm.misc.big_dict.rocksdb import PickleRocksDBStore
 from sm.misc.big_dict.redis import PickleRedisStore
@@ -78,3 +80,18 @@ def default_get_key(namespace, func_name, args, kwargs):
     return orjson.dumps(
         {"ns": namespace, "fn": func_name, "a": args, "kw": kwargs}
     ).decode()
+
+
+def skip_if_file_exist(filepath: Union[Path, str]):
+    """Skip running a function if a file exist"""
+
+    def wrapper_fn(func):
+        @functools.wraps(func)
+        def fn(*args, **kwargs):
+            if os.path.exists(filepath):
+                return
+            func(*args, **kwargs)
+
+        return fn
+
+    return wrapper_fn
