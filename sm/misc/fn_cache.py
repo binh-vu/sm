@@ -17,6 +17,7 @@ def cache_func(
     get_key: Callable[[str, str, Tuple[Any, ...], Dict[str, Any]], str] = None,
     instance_method: bool = False,
     cache: Optional[dict] = None,
+    read_only: bool = False,
 ):
     """Cache a function
 
@@ -38,7 +39,7 @@ def cache_func(
         if dbfile.startswith("redis://"):
             db = PickleRedisStore(dbfile)
         else:
-            db = PickleRocksDBStore(dbfile)
+            db = PickleRocksDBStore(dbfile, read_only=read_only)
         cache[dbfile] = db
     db = cache[dbfile]
 
@@ -93,5 +94,21 @@ def skip_if_file_exist(filepath: Union[Path, str]):
             func(*args, **kwargs)
 
         return fn
+
+    return wrapper_fn
+
+
+def exec_or_skip_if_file_exist(filepath: Union[Path, str], skip: bool = False):
+    """Skip running a function if a file exist. Otherwise, run it"""
+
+    def wrapper_fn(func):
+        @functools.wraps(func)
+        def fn():
+            if os.path.exists(filepath):
+                return
+            func()
+
+        if not skip:
+            fn()
 
     return wrapper_fn

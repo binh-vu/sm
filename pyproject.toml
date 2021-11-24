@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sem-desc"
-version = "1.2.3"
+version = "1.2.4"
 description = "Package providing basic functionalities for the semantic modeling problem"
 authors = ["Binh Vu <binh@toan2.com>"]
 license = "MIT"
@@ -14,7 +14,7 @@ include = [
 python = "^3.8"
 pandas = "^1.2.4"
 python-slugify = "^5.0.2"
-rocksdb = "^0.7.0"
+lbry-rocksdb-optimized = "^0.8.1"
 redis = "^3.5.3"
 pyrsistent = "^0.17.3"
 orjson = "^3.5.2"
