@@ -3,7 +3,7 @@ import enum
 import tempfile
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import Any, Optional, Union, Iterable, List, Set, Literal
+from typing import Any, Optional, Tuple, Union, Iterable, List, Set, Literal
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -656,3 +656,19 @@ class SemanticModel:
                 plt.show()
             finally:
                 fobj.close()
+
+    def print(self):
+        """Print the semantic model, assuming it is a tree"""
+        roots = [n for n in self.iter_nodes() if self.in_degree(n.id) == 0]
+        for root in roots:
+            stack: List[Tuple[int, Node]] = [(0, root)]
+            indent = 4
+            print(f"\n---\n[{root.id}] {root.label}")
+            while len(stack) > 0:
+                depth, node = stack.pop()
+                for edge in self.outgoing_edges(node.id):
+                    target = self.get_node(edge.target)
+                    print(
+                        f"{' ' * (depth + 1) * indent}-({edge.label})-> [{target.id}] {target.label}"
+                    )
+                    stack.append((depth + 1, target))
