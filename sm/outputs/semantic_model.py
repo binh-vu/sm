@@ -100,6 +100,7 @@ class DataNode:
 
 class LiteralNodeDataType(str, enum.Enum):
     String = "string"
+    # should use full URI
     Entity = "entity-id"
 
 
@@ -107,7 +108,7 @@ class LiteralNodeDataType(str, enum.Enum):
 class LiteralNode:
     id: str
     value: str
-    # readable label of the literal node! should not confuse it with value
+    # readable label of the literal node, should not confuse it with value
     readable_label: Optional[str] = None
     # whether the literal node is in the surround context of the dataset
     is_in_context: bool = False
