@@ -160,6 +160,21 @@ def flatten_dict(odict: dict, result: Optional[dict] = None, prefix: str = ""):
     return result
 
 
+def flatten_list(lst: list) -> list:
+    """Flatten nested list, anything that is instance of a list get flatten"""
+    output = []
+    for item in lst:
+        if isinstance(item, list):
+            for subitem in item:
+                if isinstance(subitem, list):
+                    output += flatten_list(subitem)
+                else:
+                    output.append(subitem)
+        else:
+            output.append(item)
+    return output
+
+
 class ParallelMapFnWrapper:
     def __init__(self, fn, ignore_error=False):
         self.fn = fn
