@@ -17,6 +17,7 @@ from typing import (
 
 from loguru import logger
 from tqdm.auto import tqdm
+import importlib
 
 
 def str2bool(x):
@@ -281,3 +282,25 @@ class DictProxy(Dict[K, V2]):
 
     def items(self):
         return ((k, self.access(v)) for k, v in self.odict.items())
+
+
+def import_func(func_ident: str) -> Callable:
+    """Import function from string, e.g., sm.misc.funcs.import_func"""
+    lst = func_ident.rsplit(".", 2)
+    if len(lst) == 2:
+        module, func = lst
+        cls = None
+    else:
+        module, cls, func = lst
+        try:
+            importlib.import_module(module + "." + cls)
+            module = module + "." + cls
+            cls = None
+        except ModuleNotFoundError:
+            pass
+
+    module = importlib.import_module(module)
+    if cls is not None:
+        module = getattr(module, cls)
+
+    return getattr(module, func)
