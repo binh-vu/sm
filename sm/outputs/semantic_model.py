@@ -13,7 +13,6 @@ from IPython import get_ipython
 from IPython.core.display import display
 from PIL import Image
 
-from sm.evaluation import sm_metrics
 from sm.misc import auto_wrap
 
 
@@ -474,13 +473,15 @@ class SemanticModel:
         Returns
         -------
         """
+        from sm.evaluation.sm_metrics import precision_recall_f1
+
         if filename is None:
             fobj = tempfile.NamedTemporaryFile()
             filename = fobj.name
         else:
             fobj = None
 
-        bijection = sm_metrics.precision_recall_f1(gold_sm, self).bijection
+        bijection = precision_recall_f1(gold_sm, self).bijection
         dot_g = pydot.Dot(graph_type="digraph")
         data_nodes = set()
         for uid, u in self.g.nodes.data("data"):

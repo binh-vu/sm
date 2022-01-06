@@ -10,13 +10,12 @@ from typing import Dict, Tuple, List, Set, Optional, Callable, Generator, TYPE_C
 from loguru import logger
 from pyrsistent import pvector, PVector
 
-if TYPE_CHECKING:
-    from sm.outputs.semantic_model import (
-        SemanticModel,
-        ClassNode,
-        DataNode,
-        LiteralNode,
-    )
+from sm.outputs.semantic_model import (
+    SemanticModel,
+    ClassNode,
+    DataNode,
+    LiteralNode,
+)
 
 """
 Compute precision, recall and f1 score of the semantic model according to Mohsen paper.
