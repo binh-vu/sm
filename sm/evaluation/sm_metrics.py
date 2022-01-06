@@ -11,7 +11,12 @@ from loguru import logger
 from pyrsistent import pvector, PVector
 
 if TYPE_CHECKING:
-    from sm.outputs import SemanticModel
+    from sm.outputs.semantic_model import (
+        SemanticModel,
+        ClassNode,
+        DataNode,
+        LiteralNode,
+    )
 
 """
 Compute precision, recall and f1 score of the semantic model according to Mohsen paper.
@@ -481,12 +486,12 @@ def prepare_args(
         node_index: Dict[str, Node] = {}
 
         for v in graph.iter_nodes():
-            if v.is_class_node:
+            if isinstance(v, ClassNode):
                 label = v.abs_uri
-            elif v.is_data_node:
+            elif isinstance(v, DataNode):
                 label = f"C{v.col_index:02d}:{v.label}"
             else:
-                assert v.is_literal_node
+                assert isinstance(v, LiteralNode)
                 label = v.value
             node_index[v.id] = Node(v.id, label)
 

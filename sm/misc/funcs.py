@@ -176,6 +176,16 @@ def flatten_list(lst: list) -> list:
     return output
 
 
+def group_by(lst: list, key: Callable) -> dict:
+    odict = {}
+    for item in lst:
+        k = key(item)
+        if k not in odict:
+            odict[k] = []
+        odict[k].append(item)
+    return odict
+
+
 class ParallelMapFnWrapper:
     def __init__(self, fn, ignore_error=False):
         self.fn = fn
