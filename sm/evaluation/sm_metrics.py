@@ -63,15 +63,13 @@ class NodeTriple:
 
 
 class Link(object):
-    def __init__(self, id: int, label: str, source_id: str, target_id: str) -> None:
+    def __init__(self, id: int, label: str, source: Node, target: Node) -> None:
         self.id: int = id
         self.label: str = label
-        self.target_id: str = target_id
-        self.source_id: str = source_id
-        # noinspection PyTypeChecker
-        self.source: Node = None
-        # noinspection PyTypeChecker
-        self.target: Node = None
+        self.source = source
+        self.source_id: str = source.id
+        self.target = target
+        self.target_id: str = target.id
 
 
 class LabelGroup(object):
@@ -152,24 +150,26 @@ class DependentGroups(object):
 
 
 class Bijection(object):
-    """A bijection defined a one-one mapping from x' => x"""
+    """A bijection defined a one-one mapping from x' => x.
+    A node is mapped to None means that it doesn't have a correspondent node in the other model.
+    """
 
     def __init__(self) -> None:
         # a map from x' => x (pred_sm to gold_sm)
-        self.prime2x: Dict[str, str] = {}
+        self.prime2x: Dict[str, Optional[str]] = {}
         # map from x => x'
-        self.x2prime: Dict[str, str] = {}
+        self.x2prime: Dict[str, Optional[str]] = {}
 
     @staticmethod
     def construct_from_mapping(
-        mapping: List[Tuple[Optional[int], Optional[int]]]
+        mapping: List[Tuple[Optional[str], Optional[str]]]
     ) -> "Bijection":
         """
         :param mapping: a list of map from x' => x
         """
         self = Bijection()
-        self.prime2x = {x_prime: x for x_prime, x in mapping}
-        self.x2prime = {x: x_prime for x_prime, x in mapping}
+        self.prime2x = {x_prime: x for x_prime, x in mapping if x_prime is not None}
+        self.x2prime = {x: x_prime for x_prime, x in mapping if x is not None}
         return self
 
     def extends(self, bijection: "Bijection") -> "Bijection":
@@ -266,7 +266,7 @@ def find_best_map(
         if len(call_stack) == 0:
             break
 
-    return best_map
+    return best_map  # type: ignore
 
 
 def get_unbounded_nodes(
@@ -383,10 +383,10 @@ def split_by_dependency(
     return dependency_map_groups
 
 
-# noinspection PyUnusedLocal
 def iter_group_maps(
     X: LabelGroup, X_prime: LabelGroup, bijection: Bijection
-) -> Generator[List[Tuple[int, int]], None, None]:
+) -> Generator[List[Tuple[str, Optional[str]]], None, None]:
+    """Generate all mapping between X and X_prime. Return a list of tuple of (x_prime, x)"""
     if X.size < X_prime.size:
         return iter_group_maps_general_approach(X, X_prime)
     else:
@@ -396,7 +396,7 @@ def iter_group_maps(
 
 def iter_group_maps_general_approach(
     X: LabelGroup, X_prime: LabelGroup
-) -> Generator[List[Tuple[int, int]], None, None]:
+) -> Generator[List[Tuple[str, Optional[str]]], None, None]:
     """
     Generate all mapping from X to X_prime
     NOTE: |X| < |X_prime|
@@ -406,7 +406,7 @@ def iter_group_maps_general_approach(
     mapping_mold: List[Optional[str]] = [None for _ in range(X_prime.size)]
 
     for perm in permutations(range(X_prime.size), X.size):
-        mapping: List[Tuple[str, str]] = []
+        mapping: List[Tuple[str, Optional[str]]] = []
         for i, j in enumerate(perm):
             mapping_mold[j] = X.nodes[i].id
 
@@ -418,7 +418,7 @@ def iter_group_maps_general_approach(
 
 def iter_group_maps_using_grouping(
     X_prime: LabelGroup, G: List[StructureGroup]
-) -> Generator[List[Tuple[int, int]], None, None]:
+) -> Generator[List[Tuple[str, Optional[str]]], None, None]:
     """
     Generate all mapping from X_prime to G (nodes in X grouped by their structures)
     NOTE: |X_prime| <= |X|
@@ -495,7 +495,7 @@ def prepare_args(
             node_index[v.id] = Node(v.id, label)
 
         for i, e in enumerate(graph.iter_edges()):
-            link = Link(i, e.abs_uri, e.source, e.target)
+            link = Link(i, e.abs_uri, node_index[e.source], node_index[e.target])
             Node.add_outgoing_link(node_index[e.source], link)
             Node.add_incoming_link(node_index[e.target], link)
 
@@ -644,10 +644,6 @@ def precision_recall_f1(
         f1 = 0.0
     else:
         f1 = 2 * precision * recall / (precision + recall)
-
-    # remove a useless key which causes confusion
-    if None in bijection.prime2x:
-        bijection.prime2x.pop(None)
 
     return PrecisionRecallF1Output(
         f1=f1,
