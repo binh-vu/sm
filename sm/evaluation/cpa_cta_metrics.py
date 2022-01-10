@@ -5,6 +5,7 @@ from sm.evaluation import sm_metrics
 
 from sm.outputs import SemanticModel, DataNode
 from sm.evaluation.transformation import SemModelTransformation
+from sm.outputs.semantic_model import ClassNode
 
 
 @dataclass
@@ -85,7 +86,7 @@ def cta(
 def _get_cta(sm: SemanticModel, id_props: Set[str]) -> Dict[str, str]:
     col2class = {}
     for n in sm.iter_nodes():
-        if n.is_class_node:
+        if isinstance(n, ClassNode):
             outedges = sm.outgoing_edges(n.id)
             id_edges = [outedge for outedge in outedges if outedge.abs_uri in id_props]
             if len(id_edges) > 1:

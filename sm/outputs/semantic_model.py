@@ -1,18 +1,18 @@
 import copy
 import enum
 import tempfile
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Optional, Tuple, Union, Iterable, List, Set, Literal
+from typing import Any, Iterable, List, Literal, Optional, Set, Tuple, Union
 
 import matplotlib.pyplot as plt
 import networkx as nx
 import orjson
 import pydot
+from colorama import Back, Fore, Style, init
 from IPython import get_ipython
 from IPython.core.display import display
 from PIL import Image
-
 from sm.misc import auto_wrap
 
 
@@ -207,6 +207,7 @@ class SemanticModel:
     def add_edge(self, edge: Edge):
         self.edge_id_counter += 1
         edge.id = str(self.edge_id_counter)
+        assert self.g.has_node(edge.source) and self.g.has_node(edge.target)
         self.g.add_edge(edge.source, edge.target, key=edge.id, data=edge)
 
     def update_node(self, nid: str, node: Node):
@@ -254,8 +255,14 @@ class SemanticModel:
     def iter_nodes(self) -> Iterable[Node]:
         return (u for uid, u in self.g.nodes.data("data"))
 
+    def list_nodes(self) -> List[Node]:
+        return [u for uid, u in self.g.nodes.data("data")]
+
     def iter_edges(self) -> Iterable[Edge]:
         return (e for source, target, e in self.g.edges.data("data"))
+
+    def list_edges(self) -> List[Edge]:
+        return [e for source, target, e in self.g.edges.data("data")]
 
     def incoming_edges(self, node_id: str) -> List[Edge]:
         """Get a list of incoming edges of a column"""
@@ -659,18 +666,28 @@ class SemanticModel:
             finally:
                 fobj.close()
 
-    def print(self):
+    def print(self, colorful: bool = True, indent=4, _cache={}):
+        if colorful and "init_colorama" not in _cache:
+            init()
+            _cache["init_colorama"] = True
+
+        fmt_node = lambda id: f"{Back.BLUE}{Fore.BLACK}{id}{Style.RESET_ALL}"
+        fmt_edge = lambda id: f"{Back.GREEN}{Fore.BLACK}{id}{Style.RESET_ALL}"
         """Print the semantic model, assuming it is a tree"""
         roots = [n for n in self.iter_nodes() if self.in_degree(n.id) == 0]
         for root in roots:
-            stack: List[Tuple[int, Node]] = [(0, root)]
-            indent = 4
-            print(f"\n---\n[{root.id}] {root.label}")
+            print(f"\n---")
+            stack: List[Tuple[int, Optional[Edge], Node]] = [(0, None, root)]
             while len(stack) > 0:
-                depth, node = stack.pop()
+                depth, edge, node = stack.pop()
+                tab = " " * depth * indent
+                if edge is None:
+                    print(f"{tab}[{fmt_node(root.id)}] {root.label}")
+                else:
+                    print(
+                        f"{tab}-({fmt_edge(edge.label)})-> [{Back.BLUE}{Fore.BLACK}{node.id}{Style.RESET_ALL}] {node.label}"
+                    )
+
                 for edge in self.outgoing_edges(node.id):
                     target = self.get_node(edge.target)
-                    print(
-                        f"{' ' * (depth + 1) * indent}-({edge.label})-> [{target.id}] {target.label}"
-                    )
-                    stack.append((depth + 1, target))
+                    stack.append((depth + 1, edge, target))

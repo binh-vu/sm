@@ -314,3 +314,13 @@ def import_func(func_ident: str) -> Callable:
         module = getattr(module, cls)
 
     return getattr(module, func)
+
+
+class Proxy:
+    """Proxy object, can be used for delayed initialization"""
+
+    def __init__(self, _object):
+        self._object = _object
+
+    def __getattr__(self, name):
+        return getattr(self._object(), name)
