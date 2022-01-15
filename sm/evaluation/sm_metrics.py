@@ -488,7 +488,7 @@ def prepare_args(
             if isinstance(v, ClassNode):
                 label = v.abs_uri
             elif isinstance(v, DataNode):
-                label = f"C{v.col_index:02d}:{v.label}"
+                label = f"attr-{v.col_index:02d}"
             else:
                 assert isinstance(v, LiteralNode)
                 label = v.value
