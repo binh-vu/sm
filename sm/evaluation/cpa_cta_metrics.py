@@ -25,8 +25,8 @@ def cpa(
     id_props: Set[str],
     scoring_fn: Optional[sm_metrics.ScoringFn] = None,
 ) -> sm_metrics.PrecisionRecallF1Output:
-    gold_sm = gold_sm.clone()
-    pred_sm = pred_sm.clone()
+    gold_sm = gold_sm.copy()
+    pred_sm = pred_sm.copy()
 
     _cpa_transformation(gold_sm, id_props)
     _cpa_transformation(pred_sm, id_props)
@@ -87,7 +87,7 @@ def _get_cta(sm: SemanticModel, id_props: Set[str]) -> Dict[str, str]:
     col2class = {}
     for n in sm.iter_nodes():
         if isinstance(n, ClassNode):
-            outedges = sm.outgoing_edges(n.id)
+            outedges = sm.out_edges(n.id)
             id_edges = [outedge for outedge in outedges if outedge.abs_uri in id_props]
             if len(id_edges) > 1:
                 raise Exception("Haven't supported multiple subject columns yet")

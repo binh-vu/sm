@@ -29,21 +29,23 @@ class PermutationExplosion(Exception):
 
 
 class Node(object):
-    def __init__(self, id: str, label: str) -> None:
-        self.id: str = id
+    __slots__ = ("id", "label", "incoming_links", "outgoing_links")
+
+    def __init__(self, id: int, label: str) -> None:
+        self.id: int = id
         self.label: str = label
         self.incoming_links: List[Link] = []
         self.outgoing_links: List[Link] = []
 
     @staticmethod
-    def add_incoming_link(self: "Node", link: "Link"):
-        self.incoming_links.append(link)
-        link.target = self
+    def add_incoming_link(node: "Node", link: "Link"):
+        node.incoming_links.append(link)
+        link.target = node
 
     @staticmethod
-    def add_outgoing_link(self: "Node", link: "Link"):
-        self.outgoing_links.append(link)
-        link.source = self
+    def add_outgoing_link(node: "Node", link: "Link"):
+        node.outgoing_links.append(link)
+        link.source = node
 
     def __str__(self):
         return "Node(id=%s, label=%s)" % (self.id, self.label)
@@ -52,9 +54,9 @@ class Node(object):
 @dataclass(frozen=True, eq=True)
 class NodeTriple:
     __slots__ = ("source_id", "link_label", "target_id")
-    source_id: str
+    source_id: int
     link_label: str
-    target_id: str
+    target_id: int
 
     def __setstate__(self, state):
         assert state[0] is None and isinstance(state[1], dict)
@@ -63,17 +65,21 @@ class NodeTriple:
 
 
 class Link(object):
+    __slots__ = ("id", "label", "source", "source_id", "target", "target_id")
+
     def __init__(self, id: int, label: str, source: Node, target: Node) -> None:
         self.id: int = id
         self.label: str = label
         self.source = source
-        self.source_id: str = source.id
+        self.source_id: int = source.id
         self.target = target
-        self.target_id: str = target.id
+        self.target_id: int = target.id
 
 
 class LabelGroup(object):
     """Represent a group of nodes that have same label"""
+
+    __slots__ = ("nodes", "node_triples", "size")
 
     def __init__(self, nodes: List[Node]) -> None:
         self.nodes: List[Node] = nodes
@@ -104,12 +110,16 @@ class LabelGroup(object):
 class StructureGroup(object):
     """Represent a group of nodes that have same structure"""
 
+    __slots__ = ("nodes", "size")
+
     def __init__(self, nodes: List[Node]) -> None:
         self.nodes: List[Node] = nodes
         self.size: int = len(nodes)
 
 
 class PairLabelGroup(object):
+    __slots__ = ("X", "X_prime", "label")
+
     def __init__(self, label: str, X: LabelGroup, X_prime: LabelGroup) -> None:
         self.label = label
         self.X: LabelGroup = X
@@ -121,6 +131,8 @@ class PairLabelGroup(object):
 
 class DependentGroups(object):
     """Represent a list of groups of nodes that are dependent on each other"""
+
+    __slots__ = ("pair_groups", "X_triples", "X_prime_triples", "x_pairs")
 
     def __init__(self, pair_groups: List[PairLabelGroup]):
         self.pair_groups: List[PairLabelGroup] = pair_groups
@@ -154,15 +166,17 @@ class Bijection(object):
     A node is mapped to None means that it doesn't have a correspondent node in the other model.
     """
 
+    __slots__ = ("prime2x", "x2prime")
+
     def __init__(self) -> None:
         # a map from x' => x (pred_sm to gold_sm)
-        self.prime2x: Dict[str, Optional[str]] = {}
+        self.prime2x: Dict[int, Optional[int]] = {}
         # map from x => x'
-        self.x2prime: Dict[str, Optional[str]] = {}
+        self.x2prime: Dict[int, Optional[int]] = {}
 
     @staticmethod
     def construct_from_mapping(
-        mapping: List[Tuple[Optional[str], Optional[str]]]
+        mapping: List[Tuple[Optional[int], Optional[int]]]
     ) -> "Bijection":
         """
         :param mapping: a list of map from x' => x
@@ -184,14 +198,16 @@ class Bijection(object):
         self.prime2x.update(bijection.prime2x)
         self.x2prime.update(bijection.x2prime)
 
-    def is_gold_node_bounded(self, node_id: str) -> bool:
+    def is_gold_node_bounded(self, node_id: int) -> bool:
         return node_id in self.x2prime
 
-    def is_pred_node_bounded(self, node_id: str) -> bool:
+    def is_pred_node_bounded(self, node_id: int) -> bool:
         return node_id in self.prime2x
 
 
 class IterGroupMapsUsingGroupingArgs(object):
+    __slots__ = ("node_index", "bijection", "G_sizes")
+
     def __init__(self, node_index: int, bijection: PVector, G_sizes) -> None:
         self.node_index: int = node_index
         self.bijection: PVector = bijection
@@ -199,12 +215,16 @@ class IterGroupMapsUsingGroupingArgs(object):
 
 
 class IterGroupMapsGeneralApproachArgs(object):
+    __slots__ = ("node_index", "bijection")
+
     def __init__(self, node_index: int, bijection: PVector) -> None:
         self.node_index: int = node_index
         self.bijection: PVector = bijection
 
 
 class FindBestMapArgs(object):
+    __slots__ = ("group_index", "bijection")
+
     def __init__(self, group_index: int, bijection: Bijection) -> None:
         self.group_index: int = group_index
         self.bijection = bijection
@@ -270,7 +290,7 @@ def find_best_map(
 
 
 def get_unbounded_nodes(
-    X: LabelGroup, is_bounded_func: Callable[[str], bool]
+    X: LabelGroup, is_bounded_func: Callable[[int], bool]
 ) -> List[Node]:
     """Get nodes of a label group which have not been bounded by a bijection"""
     unbounded_nodes = []
@@ -385,7 +405,7 @@ def split_by_dependency(
 
 def iter_group_maps(
     X: LabelGroup, X_prime: LabelGroup, bijection: Bijection
-) -> Generator[List[Tuple[str, Optional[str]]], None, None]:
+) -> Generator[List[Tuple[int, Optional[int]]], None, None]:
     """Generate all mapping between X and X_prime. Return a list of tuple of (x_prime, x)"""
     if X.size < X_prime.size:
         return iter_group_maps_general_approach(X, X_prime)
@@ -396,17 +416,17 @@ def iter_group_maps(
 
 def iter_group_maps_general_approach(
     X: LabelGroup, X_prime: LabelGroup
-) -> Generator[List[Tuple[str, Optional[str]]], None, None]:
+) -> Generator[List[Tuple[int, Optional[int]]], None, None]:
     """
     Generate all mapping from X to X_prime
     NOTE: |X| < |X_prime|
 
     Return mapping from (x_prime to x)
     """
-    mapping_mold: List[Optional[str]] = [None for _ in range(X_prime.size)]
+    mapping_mold: List[Optional[int]] = [None for _ in range(X_prime.size)]
 
     for perm in permutations(range(X_prime.size), X.size):
-        mapping: List[Tuple[str, Optional[str]]] = []
+        mapping: List[Tuple[int, Optional[int]]] = []
         for i, j in enumerate(perm):
             mapping_mold[j] = X.nodes[i].id
 
@@ -418,7 +438,7 @@ def iter_group_maps_general_approach(
 
 def iter_group_maps_using_grouping(
     X_prime: LabelGroup, G: List[StructureGroup]
-) -> Generator[List[Tuple[str, Optional[str]]], None, None]:
+) -> Generator[List[Tuple[int, Optional[int]]], None, None]:
     """
     Generate all mapping from X_prime to G (nodes in X grouped by their structures)
     NOTE: |X_prime| <= |X|
@@ -482,7 +502,7 @@ def prepare_args(
     """
 
     def convert_graph(graph: "SemanticModel"):
-        node_index: Dict[str, Node] = {}
+        node_index: Dict[int, Node] = {}
 
         for v in graph.iter_nodes():
             if isinstance(v, ClassNode):

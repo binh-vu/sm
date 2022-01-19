@@ -1,15 +1,20 @@
-import copy
 import enum
 import tempfile
+from copy import copy
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Iterable, List, Literal, Optional, Set, Tuple, Union
+from typing import Dict, List, Literal, Optional, Set, Tuple, Union
 
 import matplotlib.pyplot as plt
-import networkx as nx
 import orjson
 import pydot
 from colorama import Back, Fore, Style, init
+from graph import (
+    BaseRichEdge,
+    BaseRichNode,
+    NodeID,
+    RetworkXCanonicalMultiDiGraph,
+)
 from IPython import get_ipython
 from IPython.core.display import display
 from PIL import Image
@@ -53,48 +58,24 @@ class SemanticType:
         return f"SType({self})"
 
 
-@dataclass
-class ClassNode:
-    id: str
+@dataclass(eq=True)
+class ClassNode(BaseRichNode):
     abs_uri: str
     rel_uri: str
     approximation: bool = False
     readable_label: Optional[str] = None
+    id: int = -1  # id is set automatically after adding to graph
 
     @property
     def label(self):
         return self.readable_label or self.rel_uri
 
-    @property
-    def is_class_node(self):
-        return True
 
-    @property
-    def is_data_node(self):
-        return False
-
-    @property
-    def is_literal_node(self):
-        return False
-
-
-@dataclass
-class DataNode:
-    id: str
+@dataclass(eq=True)
+class DataNode(BaseRichNode):
     col_index: int
     label: str
-
-    @property
-    def is_class_node(self):
-        return False
-
-    @property
-    def is_data_node(self):
-        return True
-
-    @property
-    def is_literal_node(self):
-        return False
+    id: int = -1  # id is set automatically after adding to graph
 
 
 class LiteralNodeDataType(str, enum.Enum):
@@ -103,192 +84,76 @@ class LiteralNodeDataType(str, enum.Enum):
     Entity = "entity-id"
 
 
-@dataclass
-class LiteralNode:
-    id: str
+@dataclass(eq=True)
+class LiteralNode(BaseRichNode):
     value: str
     # readable label of the literal node, should not confuse it with value
     readable_label: Optional[str] = None
     # whether the literal node is in the surround context of the dataset
     is_in_context: bool = False
     datatype: LiteralNodeDataType = LiteralNodeDataType.String
+    id: int = -1  # id is set automatically after adding to graph
 
     @property
     def label(self):
         return self.readable_label or self.value
 
-    @property
-    def is_class_node(self):
-        return False
-
-    @property
-    def is_data_node(self):
-        return False
-
-    @property
-    def is_literal_node(self):
-        return True
-
 
 Node = Union[ClassNode, DataNode, LiteralNode]
 
 
-@dataclass
-class Edge:
-    source: str
-    target: str
+@dataclass(eq=True)
+class Edge(BaseRichEdge):
+    source: int
+    target: int
     abs_uri: str
     rel_uri: str
     approximation: bool = False
     readable_label: Optional[str] = None
-    # id of the edge, this is set automatically by the semantic model in case we have multiple edges between nodes
-    # and we need to delete one of them
-    id: Optional[str] = None
+    id: int = -1  # id is set automatically after adding to graph
+
+    @property
+    def key(self):
+        return self.abs_uri
 
     @property
     def label(self):
         return self.readable_label or self.rel_uri
 
 
-class SemanticModel:
-    def __init__(self, graph: Optional[nx.Graph] = None, edge_id_counter: int = 0):
-        if graph is not None:
-            self.g: Any = graph
-        else:
-            self.g: Any = nx.MultiDiGraph()
-        self.edge_id_counter = edge_id_counter
-
-    def get_n_nodes(self):
-        return len(self.g.nodes)
-
-    def get_n_edges(self):
-        return len(self.g.edges)
-
-    def in_degree(self, nid: str) -> int:
-        return self.g.in_degree(nid)
-
-    def out_degree(self, nid: str) -> int:
-        return self.g.out_degree(nid)
-
-    def degree(self, nid: str) -> int:
-        return self.g.degree(nid)
-
-    def get_node(self, nid: str) -> Node:
-        return self.g.nodes[nid]["data"]
+class SemanticModel(RetworkXCanonicalMultiDiGraph[Node, Edge]):
+    def __init__(self, check_cycle=False, multigraph=True):
+        super().__init__(check_cycle=check_cycle, multigraph=multigraph)
+        self.column2id: List[int] = []
+        self.value2id: Dict[str, int] = {}
 
     def get_data_node(self, column_index: int) -> DataNode:
-        for uid, u in self.g.nodes.data("data"):
-            if isinstance(u, DataNode) and u.col_index == column_index:
-                return u
-        raise KeyError(column_index)
+        return self._graph.get_node_data(self.column2id[column_index])
 
     def get_literal_node(self, value: str) -> LiteralNode:
         """Get literal node by value O(n). Throw error when the value does not found"""
-        for uid, u in self.g.nodes.data("data"):  # type: ignore
-            if isinstance(u, LiteralNode) and u.value == value:
-                return u
-        raise KeyError(value)
+        return self._graph.get_node_data(self.value2id[value])
 
-    def get_edges_between_nodes(self, source_id: str, target_id: str) -> List[Edge]:
-        res = self.g.get_edge_data(source_id, target_id)
-        if res is None:
-            return []
-        return [x["data"] for x in res.values()]
+    def has_data_node(self, column_index: int) -> bool:
+        return column_index < len(self.column2id) and self.column2id[column_index] != -1
 
-    def has_node(self, nid: str):
-        return self.g.has_node(nid)
-
-    def has_edge(self, edge: Edge):
-        return self.g.has_edge(edge.source, edge.target)
-
-    def add_node(self, node: Node):
-        self.g.add_node(node.id, data=node)
-
-    def add_edge(self, edge: Edge):
-        self.edge_id_counter += 1
-        edge.id = str(self.edge_id_counter)
-        assert self.g.has_node(edge.source) and self.g.has_node(edge.target)
-        self.g.add_edge(edge.source, edge.target, key=edge.id, data=edge)
-
-    def update_node(self, nid: str, node: Node):
-        """Update the node content by id"""
-        if nid == node.id:
-            # just update the node content
-            self.g.nodes[nid]["data"] = node
-        else:
-            # has to replace all the edges
-            inedges = list(self.g.in_edges(nid, data=True, keys=True))
-            outedges = list(self.g.out_edges(nid, data=True, keys=True))
-
-            self.g.add_node(node.id, data=node)
-            for uid, vid, eid, edata in inedges:
-                e: Edge = edata["data"]
-                e.target = node.id
-                self.g.remove_edge(uid, vid, eid)
-                self.g.add_edge(uid, node.id, eid, data=e)
-
-            for uid, vid, eid, edata in outedges:
-                e: Edge = edata["data"]
-                e.source = node.id
-                self.g.remove_edge(uid, vid, eid)
-                self.g.add_edge(node.id, vid, eid, data=e)
-
-            self.g.remove_node(nid)
-
-    def remove_node(self, node_id: str):
-        self.g.remove_node(node_id)
-
-    def remove_edge(self, edge: Edge):
-        self.g.remove_edge(edge.source, edge.target, edge.id)
-
-    def remove_edges_between_nodes(
-        self, source_id: str, target_id: str, eid: Optional[str] = None
-    ):
-        if eid is None:
-            self.g.remove_edge(source_id, target_id)
-        else:
-            self.g.remove_edge(source_id, target_id, key=eid)
-
-    def clone(self):
-        return SemanticModel(copy.deepcopy(self.g), self.edge_id_counter)
-
-    def iter_nodes(self) -> Iterable[Node]:
-        return (u for uid, u in self.g.nodes.data("data"))
-
-    def list_nodes(self) -> List[Node]:
-        return [u for uid, u in self.g.nodes.data("data")]
-
-    def iter_edges(self) -> Iterable[Edge]:
-        return (e for source, target, e in self.g.edges.data("data"))
-
-    def list_edges(self) -> List[Edge]:
-        return [e for source, target, e in self.g.edges.data("data")]
-
-    def incoming_edges(self, node_id: str) -> List[Edge]:
-        """Get a list of incoming edges of a column"""
-        lst = []
-        for u, v, e in self.g.in_edges(node_id, data="data"):
-            lst.append(e)
-        return lst
-
-    def outgoing_edges(self, node_id: str) -> List[Edge]:
-        """Get a list of outgoing edges"""
-        lst = []
-        for u, v, e in self.g.out_edges(node_id, data="data"):
-            lst.append(e)
-        return lst
-
-    def children(self, node_id: str) -> List[Node]:
-        lst = []
-        for u, v, e in self.g.out_edges(node_id, data="data"):
-            lst.append(self.g.nodes[v]["data"])
-        return lst
+    def add_node(self, node: Node) -> NodeID:
+        node_id = super().add_node(node)
+        if isinstance(node, DataNode):
+            while len(self.column2id) - 1 < node.col_index:
+                self.column2id.append(-1)
+            assert self.column2id[node.col_index] == -1
+            self.column2id[node.col_index] = node_id
+        elif isinstance(node, LiteralNode):
+            assert node.value not in self.value2id
+            self.value2id[node.value] = node_id
+        return node_id
 
     def get_semantic_types_of_column(self, col_index: int) -> List[SemanticType]:
         dnode = self.get_data_node(col_index)
         sem_types = set()
-        for u, v, e in self.g.in_edges(dnode.id, data="data"):
-            u = self.get_node(u)
+        for e in self.in_edges(dnode.id):
+            u = self.get_node(e.source)
             assert isinstance(u, ClassNode)
             sem_types.add(SemanticType(u.abs_uri, e.abs_uri, u.rel_uri, e.rel_uri))
         return list(sem_types)
@@ -298,11 +163,25 @@ class SemanticModel:
         for e in self.iter_edges():
             u = self.get_node(e.source)
             assert isinstance(u, ClassNode)
-            if self.get_node(e.target).is_class_node:
+            if isinstance(self.get_node(e.target), ClassNode):
                 continue
 
             sem_types.add(SemanticType(u.abs_uri, e.abs_uri, u.rel_uri, e.rel_uri))
         return sem_types
+
+    def copy(self):
+        sm = super().copy()
+        sm.column2id = copy(self.column2id)
+        sm.value2id = copy(self.value2id)
+        return sm
+
+    def deep_copy(self):
+        sm = self.copy()
+        for n in sm.iter_nodes():
+            sm.update_node(n.id, copy(n))
+        for e in sm.iter_edges():
+            sm.update_edge(e.id, copy(e))
+        return sm
 
     def to_dict(self):
         return {
@@ -318,16 +197,19 @@ class SemanticModel:
     @staticmethod
     def from_dict(record: dict):
         sm = SemanticModel()
+        id2node = {}
         for u in record["nodes"]:
             if "col_index" in u:
-                sm.add_node(DataNode(**u))
+                id2node[u["id"]] = sm.add_node(DataNode(**u))
             elif "abs_uri" in u:
-                sm.add_node(ClassNode(**u))
+                id2node[u["id"]] = sm.add_node(ClassNode(**u))
             else:
                 lnode = LiteralNode(**u)
                 lnode.datatype = LiteralNodeDataType(lnode.datatype)
-                sm.add_node(lnode)
+                id2node[u["id"]] = sm.add_node(lnode)
         for e in record["edges"]:
+            e["source"] = id2node[e["source"]]
+            e["target"] = id2node[e["target"]]
             assert sm.has_node(e["source"]) and sm.has_node(e["target"])
             sm.add_edge(Edge(**e))
         return sm
@@ -375,13 +257,12 @@ class SemanticModel:
             fobj = None
 
         dot_g = pydot.Dot(graph_type="digraph")
-        for uid, u in self.g.nodes.data("data"):
-            uid = uid.replace(":", "_")
-            if u.is_class_node:
+        for u in self.iter_nodes():
+            if isinstance(u, ClassNode):
                 label = auto_wrap(u.label.replace(":", r"\:"), max_char_per_line)
                 dot_g.add_node(
                     pydot.Node(
-                        name=uid,
+                        name=u.id,
                         label=label,
                         shape="ellipse",
                         style="filled",
@@ -389,14 +270,14 @@ class SemanticModel:
                         fillcolor="lightgray",
                     )
                 )
-            elif u.is_data_node:
+            elif isinstance(u, DataNode):
                 label = auto_wrap(
                     fr"C{u.col_index}\:" + u.label.replace(":", r"\:"),
                     max_char_per_line,
                 )
                 dot_g.add_node(
                     pydot.Node(
-                        name=uid,
+                        name=u.id,
                         label=label,
                         shape="plaintext",
                         style="filled",
@@ -407,7 +288,7 @@ class SemanticModel:
                 label = auto_wrap(u.value, max_char_per_line)
                 dot_g.add_node(
                     pydot.Node(
-                        name=uid,
+                        name=u.id,
                         label=label,
                         shape="plaintext",
                         style="filled",
@@ -415,12 +296,12 @@ class SemanticModel:
                     )
                 )
 
-        for u, v, e in self.g.edges.data("data"):
-            u = u.replace(":", "_")
-            v = v.replace(":", "_")
+        for e in self.iter_edges():
             label = auto_wrap(e.label.replace(":", r"\:"), max_char_per_line)
             dot_g.add_edge(
-                pydot.Edge(u, v, label=label, color="brown", fontcolor="black")
+                pydot.Edge(
+                    e.source, e.target, label=label, color="brown", fontcolor="black"
+                )
             )
 
         # graphviz from anaconda does not support jpeg so use png instead
@@ -491,9 +372,9 @@ class SemanticModel:
         bijection = precision_recall_f1(gold_sm, self).bijection
         dot_g = pydot.Dot(graph_type="digraph")
         data_nodes = set()
-        for uid, u in self.g.nodes.data("data"):
-            if u.is_class_node:
-                if bijection.prime2x[uid] is None:
+        for u in self.iter_nodes():
+            if isinstance(u, ClassNode):
+                if bijection.prime2x[u.id] is None:
                     # this is a wrong node
                     fillcolor = "tomato"
                 else:
@@ -502,7 +383,7 @@ class SemanticModel:
                 label = auto_wrap(u.label.replace(":", r"\:"), max_char_per_line)
                 dot_g.add_node(
                     pydot.Node(
-                        name=uid.replace(":", "_"),
+                        name=u.id,
                         label=label,
                         shape="ellipse",
                         style="filled",
@@ -510,7 +391,7 @@ class SemanticModel:
                         fillcolor=fillcolor,
                     )
                 )
-            else:
+            elif isinstance(u, DataNode):
                 data_nodes.add(u.col_index)
                 dot_uid = f"C{u.col_index:02d}_{u.label}"
                 label = auto_wrap(
@@ -525,13 +406,15 @@ class SemanticModel:
                         fillcolor="gold",
                     )
                 )
+            else:
+                raise NotImplementedError()
 
         # node in gold_sm doesn't appear in the pred_sm
-        for uid, u in gold_sm.g.nodes.data("data"):
-            if u.is_class_node:
-                if bijection.x2prime[uid] is None:
+        for u in gold_sm.iter_nodes():
+            if isinstance(u, ClassNode):
+                if bijection.x2prime[u.id] is None:
                     # class node in gold model need to give a different namespace (`gold:`) to avoid collision
-                    dot_uid = ("gold:" + uid).replace(":", "_")
+                    dot_uid = ("gold:" + str(u.id)).replace(":", "_")
                     dot_g.add_node(
                         pydot.Node(
                             name=dot_uid,
@@ -544,7 +427,7 @@ class SemanticModel:
                             fillcolor="lightgray",
                         )
                     )
-            else:
+            elif isinstance(u, DataNode):
                 if u.col_index not in data_nodes:
                     dot_uid = f"C{u.col_index:02d}_{u.label}"
                     dot_g.add_node(
@@ -559,22 +442,24 @@ class SemanticModel:
                             fillcolor="lightgray",
                         )
                     )
+            else:
+                raise NotImplementedError()
 
         # add edges in pred_sm
         x_triples = set()
-        for uid, vid, e in gold_sm.g.edges.data("data"):
-            e: Edge
-            v = gold_sm.get_node(vid)
+        for e in gold_sm.iter_edges():
+            v = gold_sm.get_node(e.target)
             if isinstance(v, ClassNode):
-                target = vid
+                target = v.id
             elif isinstance(v, DataNode):
                 target = (v.col_index, v.label)
             else:
                 target = v.value
-            x_triples.add((uid, e.label, target))
+            x_triples.add((e.source, e.label, target))
 
         x_prime_triples = set()
-        for uid, vid, e in self.g.edges.data("data"):
+        for e in self.iter_edges():
+            uid, vid = e.source, e.target
             v = self.get_node(vid)
             x_prime_triple = (
                 bijection.prime2x[uid],
@@ -589,9 +474,9 @@ class SemanticModel:
             else:
                 color = "red"
 
-            dot_u = uid.replace(":", "_")
+            dot_u = uid
             dot_v = (
-                vid.replace(":", "_")
+                vid
                 if isinstance(v, ClassNode)
                 else (
                     f"C{v.col_index:02d}_{v.label}"
@@ -671,7 +556,15 @@ class SemanticModel:
             init()
             _cache["init_colorama"] = True
 
-        fmt_node = lambda id: f"{Back.BLUE}{Fore.BLACK}{id}{Style.RESET_ALL}"
+        def fmt_node(node: Node):
+            if isinstance(node, ClassNode):
+                lbl = f"{node.id}"
+            elif isinstance(node, DataNode):
+                lbl = f"col-{node.col_index}"
+            elif isinstance(node, LiteralNode):
+                lbl = f"value:{node.value}"
+            return f"{Back.BLUE}{Fore.BLACK}{lbl}{Style.RESET_ALL}"
+
         fmt_edge = lambda id: f"{Back.GREEN}{Fore.BLACK}{id}{Style.RESET_ALL}"
         """Print the semantic model, assuming it is a tree"""
         roots = [n for n in self.iter_nodes() if self.in_degree(n.id) == 0]
@@ -682,12 +575,12 @@ class SemanticModel:
                 depth, edge, node = stack.pop()
                 tab = " " * depth * indent
                 if edge is None:
-                    print(f"{tab}[{fmt_node(root.id)}] {root.label}")
+                    print(f"{tab}[{fmt_node(root)}] {root.label}")
                 else:
                     print(
-                        f"{tab}-({fmt_edge(edge.label)})-> [{Back.BLUE}{Fore.BLACK}{node.id}{Style.RESET_ALL}] {node.label}"
+                        f"{tab}-({fmt_edge(edge.label)})-> [{Back.BLUE}{Fore.BLACK}{fmt_node(node)}{Style.RESET_ALL}] {node.label}"
                     )
 
-                for edge in self.outgoing_edges(node.id):
+                for edge in self.out_edges(node.id):
                     target = self.get_node(edge.target)
                     stack.append((depth + 1, edge, target))
