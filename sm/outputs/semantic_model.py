@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import orjson
 import pydot
 from colorama import Back, Fore, Style, init
-from graph import (
+from graph.retworkx import (
     BaseRichEdge,
     BaseRichNode,
     NodeID,
@@ -59,7 +59,7 @@ class SemanticType:
 
 
 @dataclass(eq=True)
-class ClassNode(BaseRichNode):
+class ClassNode(BaseRichNode[int]):
     abs_uri: str
     rel_uri: str
     approximation: bool = False
@@ -72,7 +72,7 @@ class ClassNode(BaseRichNode):
 
 
 @dataclass(eq=True)
-class DataNode(BaseRichNode):
+class DataNode(BaseRichNode[int]):
     col_index: int
     label: str
     id: int = -1  # id is set automatically after adding to graph
@@ -85,7 +85,7 @@ class LiteralNodeDataType(str, enum.Enum):
 
 
 @dataclass(eq=True)
-class LiteralNode(BaseRichNode):
+class LiteralNode(BaseRichNode[int]):
     value: str
     # readable label of the literal node, should not confuse it with value
     readable_label: Optional[str] = None
@@ -103,7 +103,7 @@ Node = Union[ClassNode, DataNode, LiteralNode]
 
 
 @dataclass(eq=True)
-class Edge(BaseRichEdge):
+class Edge(BaseRichEdge[int]):
     source: int
     target: int
     abs_uri: str
@@ -178,9 +178,9 @@ class SemanticModel(RetworkXCanonicalMultiDiGraph[Node, Edge]):
     def deep_copy(self):
         sm = self.copy()
         for n in sm.iter_nodes():
-            sm.update_node(n.id, copy(n))
+            sm.update_node(copy(n))
         for e in sm.iter_edges():
-            sm.update_edge(e.id, copy(e))
+            sm.update_edge(copy(e))
         return sm
 
     def to_dict(self):

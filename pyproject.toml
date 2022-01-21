@@ -28,7 +28,7 @@ chardet = "^4.0.0"
 ujson = "^4.0.2"
 "ruamel.yaml" = "^0.17.9"
 colorama = ">=0.4.4"
-graph-wrapper = "~1.1.0"
+graph-wrapper = "~1.2.0"
 
 [tool.poetry.dev-dependencies]
 
