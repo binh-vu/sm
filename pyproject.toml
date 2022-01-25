@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sem-desc"
-version = "3.0.0"
+version = "3.0.1"
 description = "Package providing basic functionalities for the semantic modeling problem"
 authors = ["Binh Vu <binh@toan2.com>"]
 license = "MIT"
@@ -28,7 +28,7 @@ chardet = "^4.0.0"
 ujson = "^4.0.2"
 "ruamel.yaml" = "^0.17.9"
 colorama = ">=0.4.4"
-graph-wrapper = "~1.2.0"
+graph-wrapper = "~1.3.0"
 
 [tool.poetry.dev-dependencies]
 

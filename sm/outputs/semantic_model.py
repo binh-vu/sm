@@ -10,10 +10,9 @@ import orjson
 import pydot
 from colorama import Back, Fore, Style, init
 from graph.retworkx import (
-    BaseRichEdge,
-    BaseRichNode,
-    NodeID,
-    RetworkXCanonicalMultiDiGraph,
+    BaseEdge,
+    BaseNode,
+    RetworkXDiGraph,
 )
 from IPython import get_ipython
 from IPython.core.display import display
@@ -59,7 +58,7 @@ class SemanticType:
 
 
 @dataclass(eq=True)
-class ClassNode(BaseRichNode[int]):
+class ClassNode(BaseNode[int]):
     abs_uri: str
     rel_uri: str
     approximation: bool = False
@@ -72,7 +71,7 @@ class ClassNode(BaseRichNode[int]):
 
 
 @dataclass(eq=True)
-class DataNode(BaseRichNode[int]):
+class DataNode(BaseNode[int]):
     col_index: int
     label: str
     id: int = -1  # id is set automatically after adding to graph
@@ -85,7 +84,7 @@ class LiteralNodeDataType(str, enum.Enum):
 
 
 @dataclass(eq=True)
-class LiteralNode(BaseRichNode[int]):
+class LiteralNode(BaseNode[int]):
     value: str
     # readable label of the literal node, should not confuse it with value
     readable_label: Optional[str] = None
@@ -103,7 +102,7 @@ Node = Union[ClassNode, DataNode, LiteralNode]
 
 
 @dataclass(eq=True)
-class Edge(BaseRichEdge[int]):
+class Edge(BaseEdge[int, str]):
     source: int
     target: int
     abs_uri: str
@@ -121,7 +120,7 @@ class Edge(BaseRichEdge[int]):
         return self.readable_label or self.rel_uri
 
 
-class SemanticModel(RetworkXCanonicalMultiDiGraph[Node, Edge]):
+class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
     def __init__(self, check_cycle=False, multigraph=True):
         super().__init__(check_cycle=check_cycle, multigraph=multigraph)
         self.column2id: List[int] = []
@@ -137,7 +136,7 @@ class SemanticModel(RetworkXCanonicalMultiDiGraph[Node, Edge]):
     def has_data_node(self, column_index: int) -> bool:
         return column_index < len(self.column2id) and self.column2id[column_index] != -1
 
-    def add_node(self, node: Node) -> NodeID:
+    def add_node(self, node: Node) -> int:
         node_id = super().add_node(node)
         if isinstance(node, DataNode):
             while len(self.column2id) - 1 < node.col_index:
