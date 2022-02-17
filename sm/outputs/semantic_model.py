@@ -15,7 +15,7 @@ from graph.retworkx import (
     RetworkXDiGraph,
 )
 from IPython import get_ipython
-from IPython.core.display import display
+from IPython.display import display
 from PIL import Image
 from sm.misc import auto_wrap
 
@@ -127,7 +127,10 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
         self.value2id: Dict[str, int] = {}
 
     def get_data_node(self, column_index: int) -> DataNode:
-        return self._graph.get_node_data(self.column2id[column_index])
+        try:
+            return self._graph.get_node_data(self.column2id[column_index])
+        except OverflowError as e:
+            raise KeyError(f"Column index {column_index} is not in the model") from e
 
     def get_literal_node(self, value: str) -> LiteralNode:
         """Get literal node by value O(n). Throw error when the value does not found"""

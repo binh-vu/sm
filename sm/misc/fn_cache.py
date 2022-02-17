@@ -3,84 +3,52 @@ import os
 from pathlib import Path
 
 import orjson
-from typing import Callable, Tuple, Any, Dict, Optional, Union
-
-from sm.misc.big_dict.rocksdb import PickleRocksDBStore
-from sm.misc.big_dict.redis import PickleRedisStore
-
-CACHE = {}
+from typing import Callable, Tuple, Any, Dict, Optional, Union, TypeVar
 
 
-def cache_func(
-    dbfile: str = "/tmp/cache_func.db",
-    namespace: str = "",
-    get_key: Callable[[str, str, Tuple[Any, ...], Dict[str, Any]], str] = None,
-    instance_method: bool = False,
-    cache: Optional[dict] = None,
-    read_only: bool = False,
-):
-    """Cache a function
+F = TypeVar("F", bound=Callable)
 
-    Args:
-        dbfile: can be redis (e.g., "redis://localhost:6379") or rocksdb (local file)
-        namespace:
-        get_key:
-        instance_method:
-        cache:
 
-    Returns:
+class CacheMethod:
+    @staticmethod
+    def single_object_arg(args, _kwargs):
+        return id(args[0])
 
-    """
-    global CACHE
-    if cache is None:
-        cache = CACHE
+    @staticmethod
+    def two_object_args(args, _kwargs):
+        return (id(args[0]), id(args[1]))
 
-    if dbfile not in cache:
-        if dbfile.startswith("redis://"):
-            db = PickleRedisStore(dbfile)
-        else:
-            db = PickleRocksDBStore(dbfile, read_only=read_only)
-        cache[dbfile] = db
-    db = cache[dbfile]
+    @staticmethod
+    def three_object_args(args, _kwargs):
+        return (id(args[0]), id(args[1]), id(args[2]))
 
-    if get_key is None:
-        get_key = default_get_key
+    @staticmethod
+    def as_is_posargs(args, _kwargs):
+        return args
 
-    if instance_method:
+    @staticmethod
+    def cache(
+        key: Callable[[tuple, dict], Union[tuple, str, bytes, int]]
+    ) -> Callable[[F], F]:
+        """Cache instance's method during its life-time.
+        Note: Order of the arguments is important. Different order of the arguments will result in different cache key.
+        """
 
-        def wrapper_instance_fn(func):
+        def wrapper_fn(func):
             fn_name = func.__name__
 
             @functools.wraps(func)
-            def fn(*args, **kwargs):
-                key = get_key(namespace, fn_name, args[1:], kwargs)
-                if key not in db:
-                    db[key] = func(*args, **kwargs)
-                return db[key]
+            def fn(self, *args, **kwargs):
+                if not hasattr(self, "_cache"):
+                    self._cache = {}
+                k = (fn_name, key(args, kwargs))
+                if k not in self._cache:
+                    self._cache[k] = func(self, *args, **kwargs)
+                return self._cache[k]
 
             return fn
 
-        return wrapper_instance_fn
-
-    def wrapper_fn(func):
-        fn_name = func.__name__
-
-        @functools.wraps(func)
-        def fn(*args, **kwargs):
-            key = get_key(namespace, fn_name, args, kwargs)
-            if key not in db:
-                db[key] = func(*args, **kwargs)
-            return db[key]
-
-        return fn
-
-    return wrapper_fn
-
-
-def default_get_key(namespace, func_name, args, kwargs):
-    return orjson.dumps(
-        {"ns": namespace, "fn": func_name, "a": args, "kw": kwargs}
-    ).decode()
+        return wrapper_fn  # type: ignore
 
 
 def skip_if_file_exist(filepath: Union[Path, str]):
