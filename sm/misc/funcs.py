@@ -22,19 +22,19 @@ import importlib
 
 def str2bool(x):
     assert x in {"True", "False", "true", "false", "null"}
-    if x == "<null>":
+    if x == "null":
         return None
     return x.lower() == "true"
 
 
 def nullable_str(x):
-    if x == "<null>":
+    if x == "null":
         return None
     return x
 
 
 def str2int(x):
-    if x == "<null>":
+    if x == "null":
         return None
     return int(x)
 
@@ -43,7 +43,7 @@ def percentage(a, b):
     return "%.2f%% (%d/%d)" % (a * 100 / b, a, b)
 
 
-def filter_duplication(lst: List[Any], key_fn: Callable[[Any], Any] = None):
+def filter_duplication(lst: List[Any], key_fn: Optional[Callable[[Any], Any]] = None):
     key_fn = key_fn or identity_func
     keys = set()
     new_lst = []
@@ -105,7 +105,7 @@ def get_latest_path(path: Union[str, Path]) -> Optional[str]:
 def auto_wrap(
     word: str,
     max_char_per_line: int,
-    delimiters: List[str] = None,
+    delimiters: Optional[List[str]] = None,
     camelcase_split: bool = True,
 ) -> str:
     """
@@ -314,6 +314,13 @@ def import_func(func_ident: str) -> Callable:
         module = getattr(module, cls)
 
     return getattr(module, func)
+
+
+def import_attr(attr_ident: str):
+    lst = attr_ident.rsplit(".", 1)
+    module, cls = lst
+    module = importlib.import_module(module)
+    return getattr(module, cls)
 
 
 class Proxy:

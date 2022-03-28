@@ -503,7 +503,7 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
                 dot_u = (
                     "gold:" + x_triple[0]
                     if bijection.x2prime[x_triple[0]] is None
-                    else bijection.x2prime[x_triple[0]]
+                    else str(bijection.x2prime[x_triple[0]])
                 )
                 dot_u = dot_u.replace(":", "_")
 
@@ -513,7 +513,7 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
                     dot_v = (
                         "gold:" + x_triple[2]
                         if bijection.x2prime[x_triple[2]] is None
-                        else bijection.x2prime[x_triple[2]]
+                        else str(bijection.x2prime[x_triple[2]])
                     )
                     dot_v = dot_v.replace(":", "_")
 

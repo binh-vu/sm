@@ -41,7 +41,7 @@ def get_open_fn(infile: Union[str, Path]):
         return open
 
 
-def fix_encoding(fpath: Union[str, Path], backup_file: bool = True) -> bool:
+def fix_encoding(fpath: Union[str, Path], backup_file: bool = True) -> Union[str, bool]:
     """Try to decode the context of the file as text in UTF-8, if it fails, try windows encoding before try to detect
     encoding of the file.
 
@@ -50,7 +50,7 @@ def fix_encoding(fpath: Union[str, Path], backup_file: bool = True) -> bool:
 
     The function return True if the content is in UTF-8
     """
-    with get_open_fn(str(fpath))(str(fpath), 'rb') as f:
+    with get_open_fn(str(fpath))(str(fpath), "rb") as f:
         content = f.read()
 
     try:
@@ -62,10 +62,10 @@ def fix_encoding(fpath: Union[str, Path], backup_file: bool = True) -> bool:
     try:
         content = content.decode("windows-1252")
     except UnicodeDecodeError:
-        encoding = chardet.detect(content)['encoding']
+        encoding = chardet.detect(content)["encoding"]
         content = content.decode(encoding)
 
-    with get_open_fn(str(fpath))(str(fpath), 'wb') as f:
+    with get_open_fn(str(fpath))(str(fpath), "wb") as f:
         f.write(content.encode())
 
     return content
@@ -88,7 +88,7 @@ def serialize_pkl_lines(objects: List[Any], fpath: Union[str, Path]):
     with get_open_fn(str(fpath))(str(fpath), "wb") as f:
         for obj in objects:
             content = pickle.dumps(obj)
-            f.write(len(content).to_bytes(4, 'little', signed=False))
+            f.write(len(content).to_bytes(4, "little", signed=False))
             f.write(content)
 
 
@@ -97,7 +97,7 @@ def deserialize_pkl_lines(fpath: Union[str, Path]):
     with get_open_fn(str(fpath))(str(fpath), "rb") as f:
         objects = []
         while True:
-            size = int.from_bytes(f.read(4), 'little', signed=False)
+            size = int.from_bytes(f.read(4), "little", signed=False)
             if size == 0:
                 break
             objects.append(pickle.loads(f.read(size)))
@@ -112,7 +112,7 @@ def serialize_jl(objects, fpath: Union[str, Path]):
             f.write(b"\n")
 
 
-def deserialize_jl(fpath: Union[str, Path], n_lines: Optional[int]=None):
+def deserialize_jl(fpath: Union[str, Path], n_lines: Optional[int] = None):
     with get_open_fn(str(fpath))(str(fpath), "rb") as f:
         if n_lines is None:
             return [orjson.loads(line) for line in f]
@@ -134,7 +134,11 @@ def serialize_json(
             if indent is None:
                 f.write(orjson.dumps(obj, option=orjson.OPT_SERIALIZE_DATACLASS))
             elif indent == 2:
-                f.write(orjson.dumps(obj, option=orjson.OPT_SERIALIZE_DATACLASS | orjson.OPT_INDENT_2))
+                f.write(
+                    orjson.dumps(
+                        obj, option=orjson.OPT_SERIALIZE_DATACLASS | orjson.OPT_INDENT_2
+                    )
+                )
             else:
                 f.write(
                     ujson.dumps(
@@ -148,7 +152,7 @@ def deserialize_json(fpath: Union[str, Path]):
         return orjson.loads(f.read())
 
 
-def deserialize_byte_lines(fpath: Union[str, Path], n_lines: Optional[int]=None):
+def deserialize_byte_lines(fpath: Union[str, Path], n_lines: Optional[int] = None):
     """Deserialize byte lines, each line should never have byte b'\n'."""
     with get_open_fn(str(fpath))(str(fpath), "rb") as f:
         if n_lines is None:
@@ -176,11 +180,13 @@ def serialize_lines(objects: Sequence[str], fpath: Union[str, Path]):
             f.write(b"\n")
 
 
-def deserialize_lines(fpath: Union[str, Path], n_lines: Optional[int]=None, trim: bool=False):
+def deserialize_lines(
+    fpath: Union[str, Path], n_lines: Optional[int] = None, trim: bool = False
+):
     with get_open_fn(str(fpath))(str(fpath), "rb") as f:
         if n_lines is None:
             if trim:
-                return [line.decode().strip() for line in f]    
+                return [line.decode().strip() for line in f]
             return [line.decode() for line in f]
 
         lst = []
@@ -223,7 +229,9 @@ def deserialize_yml(fpath: Union[str, Path]):
         return yaml.load(f)
 
 
-def serialize_csv(rows, fpath: Union[str, Path], mode="w", delimiter=","):
+def serialize_csv(
+    rows: List[List[str]], fpath: Union[str, Path], mode="w", delimiter=","
+):
     with open(fpath, mode, newline="") as f:
         writer = csv.writer(
             f, delimiter=delimiter, quoting=csv.QUOTE_MINIMAL, lineterminator="\n"
