@@ -20,6 +20,9 @@ from tqdm.auto import tqdm
 import importlib
 
 
+V = TypeVar("V")
+
+
 def str2bool(x):
     assert x in {"True", "False", "true", "false", "null"}
     if x == "null":
@@ -39,7 +42,12 @@ def str2int(x):
     return int(x)
 
 
-def percentage(a, b):
+def assert_not_null(x: Optional[V]) -> V:
+    assert x is not None
+    return x
+
+
+def percentage(a: Union[float, int], b: Union[float, int]) -> str:
     return "%.2f%% (%d/%d)" % (a * 100 / b, a, b)
 
 
