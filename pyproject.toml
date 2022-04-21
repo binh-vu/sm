@@ -29,6 +29,7 @@ colorama = ">=0.4.4"
 graph-wrapper = "^1.4.0"
 
 [tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
