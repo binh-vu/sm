@@ -1,4 +1,5 @@
 import glob
+from inspect import signature
 import re
 from contextlib import contextmanager
 from multiprocessing.pool import Pool, ThreadPool
@@ -195,14 +196,19 @@ def group_by(lst: list, key: Callable) -> dict:
 
 
 class ParallelMapFnWrapper:
-    def __init__(self, fn, ignore_error=False):
+    def __init__(self, fn: Callable, ignore_error=False):
         self.fn = fn
+        fn_params = signature(fn).parameters
+        self.spread_fn_args = len(fn_params) > 1
         self.ignore_error = ignore_error
 
     def run(self, args):
         idx, r = args
         try:
-            r = self.fn(r)
+            if self.spread_fn_args:
+                r = self.fn(*r)
+            else:
+                r = self.fn(r)
             return idx, r
         except:
             logger.error(f"[ParallelMap] Error while process item {idx}")

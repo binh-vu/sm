@@ -25,8 +25,8 @@ def cpa(
     id_props: Set[str],
     scoring_fn: Optional[sm_metrics.ScoringFn] = None,
 ) -> sm_metrics.PrecisionRecallF1Output:
-    gold_sm = gold_sm.copy()
-    pred_sm = pred_sm.copy()
+    gold_sm = gold_sm.deep_copy()
+    pred_sm = pred_sm.deep_copy()
 
     _cpa_transformation(gold_sm, id_props)
     _cpa_transformation(pred_sm, id_props)

@@ -17,6 +17,7 @@ from graph.retworkx import (
 from IPython import get_ipython
 from IPython.display import display
 from PIL import Image
+from rdflib.namespace import RDFS
 from sm.misc import auto_wrap
 
 
@@ -129,15 +130,20 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
     def get_data_node(self, column_index: int) -> DataNode:
         try:
             return self._graph.get_node_data(self.column2id[column_index])
+        except IndexError as e:
+            raise KeyError(f"Column index {column_index} is not in the model") from e
         except OverflowError as e:
             raise KeyError(f"Column index {column_index} is not in the model") from e
 
     def get_literal_node(self, value: str) -> LiteralNode:
-        """Get literal node by value O(n). Throw error when the value does not found"""
+        """Get literal node by value. Throw error when the value does not found"""
         return self._graph.get_node_data(self.value2id[value])
 
     def has_data_node(self, column_index: int) -> bool:
         return column_index < len(self.column2id) and self.column2id[column_index] != -1
+
+    def has_literal_node(self, value: str) -> bool:
+        return value in self.value2id
 
     def add_node(self, node: Node) -> int:
         node_id = super().add_node(node)
@@ -274,7 +280,7 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
                 )
             elif isinstance(u, DataNode):
                 label = auto_wrap(
-                    fr"C{u.col_index}\:" + u.label.replace(":", r"\:"),
+                    rf"C{u.col_index}\:" + u.label.replace(":", r"\:"),
                     max_char_per_line,
                 )
                 dot_g.add_node(
@@ -558,16 +564,17 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
             init()
             _cache["init_colorama"] = True
 
-        def fmt_node(node: Node):
+        def rnode(node: Node):
             if isinstance(node, ClassNode):
-                lbl = f"{node.id}"
-            elif isinstance(node, DataNode):
-                lbl = f"col-{node.col_index}"
-            elif isinstance(node, LiteralNode):
-                lbl = f"value:{node.value}"
-            return f"{Back.BLUE}{Fore.BLACK}{lbl}{Style.RESET_ALL}"
+                return f"{Back.LIGHTGREEN_EX}{Fore.BLACK}[{node.id}] {node.label}{Style.RESET_ALL}"
+            if isinstance(node, DataNode):
+                return f"{Back.LIGHTYELLOW_EX}{Fore.BLACK}[{node.id}] {node.label} (column {node.col_index}){Style.RESET_ALL}"
+            if isinstance(node, LiteralNode):
+                return f"{Back.LIGHTCYAN_EX}{Fore.BLACK}[{node.id}] {node.readable_label}{Style.RESET_ALL}"
 
-        fmt_edge = lambda id: f"{Back.GREEN}{Fore.BLACK}{id}{Style.RESET_ALL}"
+        def redge(edge: Edge):
+            return f"—[{edge.id}: {Back.LIGHTMAGENTA_EX}{Fore.BLACK}{edge.label}{Style.RESET_ALL}]-→"
+
         """Print the semantic model, assuming it is a tree"""
         roots = [n for n in self.iter_nodes() if self.in_degree(n.id) == 0]
         for root in roots:
@@ -577,12 +584,17 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
                 depth, edge, node = stack.pop()
                 tab = " " * depth * indent
                 if edge is None:
-                    print(f"{tab}[{fmt_node(root)}] {root.label}")
+                    print(f"{tab}{rnode(root)}")
                 else:
-                    print(
-                        f"{tab}-({fmt_edge(edge.label)})-> [{Back.BLUE}{Fore.BLACK}{fmt_node(node)}{Style.RESET_ALL}] {node.label}"
-                    )
+                    print(f"{tab}{redge(edge)} {rnode(node)}")
 
-                for edge in self.out_edges(node.id):
+                outedges = sorted(
+                    self.out_edges(node.id),
+                    key=lambda edge: f"0:{edge.abs_uri}"
+                    if edge.abs_uri == str(RDFS.label)
+                    else f"1:{edge.abs_uri}",
+                    reverse=True,
+                )
+                for edge in outedges:
                     target = self.get_node(edge.target)
                     stack.append((depth + 1, edge, target))

@@ -588,7 +588,7 @@ def precision_recall_f1(
     gold_sm: "SemanticModel",
     pred_sm: "SemanticModel",
     scoring_fn: Optional[ScoringFn] = None,
-    debug_dir: str = None,
+    debug_dir: Optional[str] = None,
 ) -> PrecisionRecallF1Output:
     if scoring_fn is None:
         scoring_fn = ScoringFn()
