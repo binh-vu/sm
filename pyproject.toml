@@ -27,6 +27,7 @@ ujson = "^5.1.0"
 "ruamel.yaml" = "^0.17.9"
 colorama = ">=0.4.4"
 graph-wrapper = "^1.4.0"
+rdflib = "^6.1.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
