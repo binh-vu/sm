@@ -559,7 +559,12 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
             finally:
                 fobj.close()
 
-    def print(self, colorful: bool = True, indent=4, _cache={}):
+    def print(
+        self,
+        colorful: bool = True,
+        ignore_isolated_nodes: bool = False,
+        _cache={},
+    ):
         if colorful and "init_colorama" not in _cache:
             init()
             _cache["init_colorama"] = True
@@ -573,21 +578,32 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
                 return f"{Back.LIGHTCYAN_EX}{Fore.BLACK}[{node.id}] {node.readable_label}{Style.RESET_ALL}"
 
         def redge(edge: Edge):
-            return f"—[{edge.id}: {Back.LIGHTMAGENTA_EX}{Fore.BLACK}{edge.label}{Style.RESET_ALL}]-→"
+            return f"─[{edge.id}: {Back.LIGHTMAGENTA_EX}{Fore.BLACK}{edge.label}{Style.RESET_ALL}]→"
 
-        """Print the semantic model, assuming it is a tree"""
-        roots = [n for n in self.iter_nodes() if self.in_degree(n.id) == 0]
-        for root in roots:
-            print(f"\n---")
-            stack: List[Tuple[int, Optional[Edge], Node]] = [(0, None, root)]
+        visited = {}
+
+        def dfs(start: Node):
+            print("")
+            stack: List[Tuple[int, Optional[Edge], Node]] = [(0, None, start)]
             while len(stack) > 0:
                 depth, edge, node = stack.pop()
-                tab = " " * depth * indent
                 if edge is None:
-                    print(f"{tab}{rnode(root)}")
+                    msg = f"{rnode(node)}"
                 else:
-                    print(f"{tab}{redge(edge)} {rnode(node)}")
+                    msg = f"{redge(edge)} {rnode(node)}"
 
+                if depth > 0:
+                    indent = "│   " * (depth - 1)
+                    msg = f"{indent}├── {msg}"
+
+                if node.id in visited:
+                    msg += f" (visited at {visited[node.id]})"
+                    print(f"--.\t{msg}")
+                    continue
+
+                counter = len(visited)
+                visited[node.id] = counter
+                print(f"{counter:02d}.\t{msg}")
                 outedges = sorted(
                     self.out_edges(node.id),
                     key=lambda edge: f"0:{edge.abs_uri}"
@@ -598,3 +614,19 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
                 for edge in outedges:
                     target = self.get_node(edge.target)
                     stack.append((depth + 1, edge, target))
+
+        """Print the semantic model, assuming it is a tree"""
+        nodes = self.nodes()
+        if ignore_isolated_nodes:
+            nodes = [n for n in nodes if self.degree(n.id) > 0]
+
+        roots = [n for n in nodes if self.in_degree(n.id) == 0]
+        for root in roots:
+            dfs(root)
+
+        # doing a final pass to make sure all nodes are printed (including cycles)
+        while len(visited) < len(nodes):
+            n = [n for n in nodes if n.id not in visited and self.out_degree(n.id) > 0][
+                0
+            ]
+            dfs(n)
