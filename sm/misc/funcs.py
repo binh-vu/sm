@@ -21,6 +21,7 @@ from tqdm.auto import tqdm
 import importlib
 
 
+K = TypeVar("K")
 V = TypeVar("V")
 
 
@@ -185,7 +186,7 @@ def flatten_list(lst: list) -> list:
     return output
 
 
-def group_by(lst: list, key: Callable) -> dict:
+def group_by(lst: list[V], key: Callable[[V], K]) -> dict[K, list[V]]:
     odict = {}
     for item in lst:
         k = key(item)
