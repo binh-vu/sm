@@ -1,6 +1,7 @@
 import glob
 from inspect import signature
 import re
+import math
 from contextlib import contextmanager
 from multiprocessing.pool import Pool, ThreadPool
 from operator import itemgetter
@@ -186,7 +187,7 @@ def flatten_list(lst: list) -> list:
     return output
 
 
-def group_by(lst: list[V], key: Callable[[V], K]) -> dict[K, list[V]]:
+def group_by(lst: List[V], key: Callable[[V], K]) -> Dict[K, List[V]]:
     odict = {}
     for item in lst:
         k = key(item)
@@ -194,6 +195,28 @@ def group_by(lst: list[V], key: Callable[[V], K]) -> dict[K, list[V]]:
             odict[k] = []
         odict[k].append(item)
     return odict
+
+
+def datasize(num, suffix="B"):
+    """Get human friendly file size
+    https://gist.github.com/cbwar/d2dfbc19b140bd599daccbe0fe925597#gistcomment-2845059
+
+    Args:
+        num (int): Bytes value
+        suffix (str, optional): Unit. Defaults to 'B'.
+
+    Returns:
+        str: file size0
+    """
+    if num == 0:
+        return "0"
+    magnitude = int(math.floor(math.log(num, 1024)))
+    val = num / math.pow(1024, magnitude)
+    if magnitude > 7:
+        return "{:3.1f}{}{}".format(val, "Yi", suffix)
+    return "{:3.1f}{}{}".format(
+        val, ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"][magnitude], suffix
+    )
 
 
 class ParallelMapFnWrapper:
