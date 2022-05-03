@@ -161,7 +161,7 @@ class DependentGroups(object):
         return n_permutation
 
 
-class Bijection(object):
+class PartialBijection(object):
     """A bijection defined a one-one mapping from x' => x.
     A node is mapped to None means that it doesn't have a correspondent node in the other model.
     """
@@ -177,24 +177,24 @@ class Bijection(object):
     @staticmethod
     def construct_from_mapping(
         mapping: List[Tuple[Optional[int], Optional[int]]]
-    ) -> "Bijection":
+    ) -> "PartialBijection":
         """
         :param mapping: a list of map from x' => x
         """
-        self = Bijection()
+        self = PartialBijection()
         self.prime2x = {x_prime: x for x_prime, x in mapping if x_prime is not None}
         self.x2prime = {x: x_prime for x_prime, x in mapping if x is not None}
         return self
 
-    def extends(self, bijection: "Bijection") -> "Bijection":
-        another = Bijection()
+    def extends(self, bijection: "PartialBijection") -> "PartialBijection":
+        another = PartialBijection()
         another.prime2x = dict(self.prime2x)
         another.prime2x.update(bijection.prime2x)
         another.x2prime = dict(self.x2prime)
         another.x2prime.update(bijection.x2prime)
         return another
 
-    def extends_(self, bijection: "Bijection") -> None:
+    def extends_(self, bijection: "PartialBijection") -> None:
         self.prime2x.update(bijection.prime2x)
         self.x2prime.update(bijection.x2prime)
 
@@ -225,7 +225,7 @@ class IterGroupMapsGeneralApproachArgs(object):
 class FindBestMapArgs(object):
     __slots__ = ("group_index", "bijection")
 
-    def __init__(self, group_index: int, bijection: Bijection) -> None:
+    def __init__(self, group_index: int, bijection: PartialBijection) -> None:
         self.group_index: int = group_index
         self.bijection = bijection
 
@@ -241,7 +241,7 @@ class PrecisionRecallF1Output:
     precision: float
     recall: float
     f1: float
-    bijection: Bijection
+    bijection: PartialBijection
     n_corrects: float  # float as we allow for partial correctness
     n_examples: int
     n_predictions: int
@@ -250,8 +250,8 @@ class PrecisionRecallF1Output:
 
 
 def find_best_map(
-    dependent_group: DependentGroups, bijection: Bijection, scoring_fn: ScoringFn
-) -> Bijection:
+    dependent_group: DependentGroups, bijection: PartialBijection, scoring_fn: ScoringFn
+) -> PartialBijection:
     terminate_index: int = len(dependent_group.pair_groups)
     # This code find the size of this
     # array: sum([min(gold_group.size, pred_group.size) for gold_group, pred_group in dependent_group.groups])
@@ -274,7 +274,7 @@ def find_best_map(
             pair_group = dependent_group.pair_groups[call_args.group_index]
             X, X_prime = pair_group.X, pair_group.X_prime
             for group_map in iter_group_maps(X, X_prime, call_args.bijection):
-                bijection = Bijection.construct_from_mapping(group_map)
+                bijection = PartialBijection.construct_from_mapping(group_map)
 
                 call_stack.append(
                     FindBestMapArgs(
@@ -308,7 +308,7 @@ def get_unbounded_nodes(
 
 
 def get_common_unbounded_nodes(
-    X: LabelGroup, X_prime: LabelGroup, bijection: Bijection
+    X: LabelGroup, X_prime: LabelGroup, bijection: PartialBijection
 ) -> Set[str]:
     """Finding unbounded nodes in X and X_prime that have same labels"""
     unbounded_X = get_unbounded_nodes(X, bijection.is_gold_node_bounded)
@@ -368,7 +368,7 @@ def group_dependent_elements(dependency_map: List[List[int]]) -> List[int]:
 
 
 def split_by_dependency(
-    map_groups: List[PairLabelGroup], bijection: Bijection
+    map_groups: List[PairLabelGroup], bijection: PartialBijection
 ) -> List[DependentGroups]:
     """This method takes a list of groups (X, X') and group them based on their dependencies.
     D = {D1, D2, …} s.t for all Di, Dj, (Xi, Xi') in Di, (Xj, Xj’) in Dj, they are independent
@@ -404,7 +404,7 @@ def split_by_dependency(
 
 
 def iter_group_maps(
-    X: LabelGroup, X_prime: LabelGroup, bijection: Bijection
+    X: LabelGroup, X_prime: LabelGroup, bijection: PartialBijection
 ) -> Generator[List[Tuple[int, Optional[int]]], None, None]:
     """Generate all mapping between X and X_prime. Return a list of tuple of (x_prime, x)"""
     if X.size < X_prime.size:
@@ -541,7 +541,9 @@ def prepare_args(
 
 
 def eval_score(
-    dependent_groups: DependentGroups, bijection: Bijection, scoring_fn: ScoringFn
+    dependent_groups: DependentGroups,
+    bijection: PartialBijection,
+    scoring_fn: ScoringFn,
 ) -> float:
     x_pairs = dependent_groups.x_pairs
     mapped_xprime_triples = {}
@@ -606,7 +608,7 @@ def precision_recall_f1(
         else:
             map_groups.append(pair)
 
-    bijection = Bijection.construct_from_mapping(mapping)
+    bijection = PartialBijection.construct_from_mapping(mapping)
     list_of_dependent_groups: List[DependentGroups] = split_by_dependency(
         map_groups, bijection
     )

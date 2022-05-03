@@ -8,6 +8,7 @@ from operator import itemgetter
 from pathlib import Path
 from typing import (
     Dict,
+    Iterable,
     TypeVar,
     Union,
     Callable,
@@ -187,7 +188,7 @@ def flatten_list(lst: list) -> list:
     return output
 
 
-def group_by(lst: List[V], key: Callable[[V], K]) -> Dict[K, List[V]]:
+def group_by(lst: Iterable[V], key: Callable[[V], K]) -> Dict[K, List[V]]:
     odict = {}
     for item in lst:
         k = key(item)

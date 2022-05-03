@@ -38,6 +38,7 @@ class WikidataNamespace(Namespace):
             "wdv": "http://www.wikidata.org/value/",
             "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
             "wikibase": "http://wikiba.se/ontology#",
+            "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
         }
         ns2prefix = {v: k for k, v in prefix2ns.items()}
         assert len(ns2prefix) == len(prefix2ns), "Duplicated namespaces"

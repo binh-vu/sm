@@ -3,7 +3,7 @@ import tempfile
 from copy import copy
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Set, Tuple, Union
+from typing import Dict, List, Literal, Optional, Set, Tuple, Union, cast
 
 import matplotlib.pyplot as plt
 import orjson
@@ -18,7 +18,7 @@ from IPython import get_ipython
 from IPython.display import display
 from PIL import Image
 from rdflib.namespace import RDFS
-from sm.misc import auto_wrap
+from sm.misc import auto_wrap, group_by, Bijection
 
 
 @dataclass
@@ -70,12 +70,32 @@ class ClassNode(BaseNode[int]):
     def label(self):
         return self.readable_label or self.rel_uri
 
+    def _is_value_equal(self, other: "ClassNode") -> bool:
+        """Compare if the "value" of this node and the other node is equal.
+        Meaning we do not care about the id as it can be changed
+        by the insertion other.
+
+        This function is here for SemanticModel.is_equal to use
+        """
+        return (
+            self.abs_uri == other.abs_uri and self.approximation == other.approximation
+        )
+
 
 @dataclass(eq=True)
 class DataNode(BaseNode[int]):
     col_index: int
     label: str
     id: int = -1  # id is set automatically after adding to graph
+
+    def _is_value_equal(self, other: "DataNode") -> bool:
+        """Compare if the "value" of this node and the other node is equal.
+        Meaning we do not care about the id as it can be changed
+        by the insertion other.
+
+        This function is here for SemanticModel.is_equal to use
+        """
+        return self.col_index == other.col_index and self.label == other.label
 
 
 class LiteralNodeDataType(str, enum.Enum):
@@ -98,6 +118,19 @@ class LiteralNode(BaseNode[int]):
     def label(self):
         return self.readable_label or self.value
 
+    def _is_value_equal(self, other: "LiteralNode") -> bool:
+        """Compare if the "value" of this node and the other node is equal.
+        Meaning we do not care about the id as it can be changed
+        by the insertion other.
+
+        This function is here for SemanticModel.is_equal to use
+        """
+        return (
+            self.value == other.value
+            and self.is_in_context == other.is_in_context
+            and self.datatype == other.datatype
+        )
+
 
 Node = Union[ClassNode, DataNode, LiteralNode]
 
@@ -119,6 +152,17 @@ class Edge(BaseEdge[int, str]):
     @property
     def label(self):
         return self.readable_label or self.rel_uri
+
+    def _is_value_equal(self, other: "Edge") -> bool:
+        """Compare if the "value" of this edge and the other edge is equal.
+        Meaning we do not care about the source, target, and id of the edge as it can be changed
+        by the insertion other.
+
+        This function is here for SemanticModel.is_equal to use
+        """
+        return (
+            self.abs_uri == other.abs_uri and self.approximation == other.approximation
+        )
 
 
 class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
@@ -176,6 +220,97 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
 
             sem_types.add(SemanticType(u.abs_uri, e.abs_uri, u.rel_uri, e.rel_uri))
         return sem_types
+
+    def is_equal(self, sm: "SemanticModel") -> bool:
+        """Compare if two semantic model is equivalent"""
+        if self.num_nodes() != sm.num_nodes() or self.num_edges() != sm.num_edges():
+            return False
+
+        # bijection between nodes in two models
+        bijection: Bijection[int, int] = Bijection()
+
+        nodes = self.nodes()
+        other_nodes = sm.nodes()
+
+        # compare data nodes
+        data_nodes = [n for n in nodes if isinstance(n, DataNode)]
+        other_data_nodes = {
+            n.col_index: n for n in other_nodes if isinstance(n, DataNode)
+        }
+        if len(data_nodes) != len(other_data_nodes) or any(
+            [
+                u.col_index not in other_data_nodes
+                or not u._is_value_equal(other_data_nodes[u.col_index])
+                for u in data_nodes
+            ]
+        ):
+            return False
+
+        # compare literal nodes
+        if len(self.value2id) != len(sm.value2id) or any(
+            value not in sm.value2id
+            or not cast(LiteralNode, self.get_node(id))._is_value_equal(
+                cast(LiteralNode, sm.get_node(sm.value2id[value]))
+            )
+            for value, id in self.value2id.items()
+        ):
+            return False
+
+        # update bijection with mapping between data and literal nodes
+        for u in data_nodes:
+            bijection.check_add(u.id, other_data_nodes[u.col_index].id)
+        for value in self.value2id:
+            bijection.check_add(self.value2id[value], sm.value2id[value])
+
+        # from the data nodes and literal nodes, we check the edges and class nodes
+        # until we find a mismatch, or we checked all nodes and edges
+        checked_edges = set()
+        while True:
+            n_mapped = bijection.size()
+            for uid, uprime_id in list(bijection.x2prime.items()):
+                uri2edges = group_by(self.in_edges(uid), lambda e: e.abs_uri)
+                other_uri2edges = group_by(sm.in_edges(uprime_id), lambda e: e.abs_uri)
+                if set(uri2edges.keys()) != set(other_uri2edges.keys()):
+                    return False
+
+                for uri, edges in uri2edges.items():
+                    if len(edges) != len(other_uri2edges[uri]):
+                        return False
+                    if len(edges) == 1:
+                        if not edges[0]._is_value_equal(other_uri2edges[uri][0]):
+                            return False
+
+                        u = self.get_node(edges[0].source)
+                        uprime = sm.get_node(other_uri2edges[uri][0].source)
+
+                        if (
+                            isinstance(u, ClassNode)
+                            and isinstance(uprime, ClassNode)
+                            and not u._is_value_equal(uprime)
+                        ):
+                            return False
+
+                        if not bijection.add(
+                            edges[0].source, other_uri2edges[uri][0].source
+                        ):
+                            return False
+
+                        checked_edges.add(edges[0].id)
+
+                    # TODO: handle case where #edges > 1, we can future split them
+                    # by the mapped source
+
+            if n_mapped == bijection.size():
+                break
+
+        # almost all nodes should mapped by now
+        if bijection.size() != len(nodes):
+            # exception to see when this happens
+            raise NotImplementedError()
+
+        # all edges and class nodes must been checked
+        assert len(checked_edges) == self.num_edges()
+        return True
 
     def copy(self):
         sm = super().copy()
@@ -563,27 +698,51 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
         self,
         colorful: bool = True,
         ignore_isolated_nodes: bool = False,
+        env: Literal["terminal", "browser"] = "terminal",
         _cache={},
-    ):
+    ) -> Optional[str]:
+        """Print the semantic model to the environment if possible. When env is browser, users have to print it manually"""
         if colorful and "init_colorama" not in _cache:
             init()
             _cache["init_colorama"] = True
 
-        def rnode(node: Node):
+        def terminal_rnode(node: Node):
             if isinstance(node, ClassNode):
                 return f"{Back.LIGHTGREEN_EX}{Fore.BLACK}[{node.id}] {node.label}{Style.RESET_ALL}"
             if isinstance(node, DataNode):
-                return f"{Back.LIGHTYELLOW_EX}{Fore.BLACK}[{node.id}] {node.label} (column {node.col_index}){Style.RESET_ALL}"
+                return f"{Back.LIGHTYELLOW_EX}{Fore.BLACK}[{node.id}] {node.label} (column {node.col_index}){Style.RESET_ALL}".replace(
+                    "\n", "\\n"
+                )
             if isinstance(node, LiteralNode):
                 return f"{Back.LIGHTCYAN_EX}{Fore.BLACK}[{node.id}] {node.readable_label}{Style.RESET_ALL}"
 
-        def redge(edge: Edge):
+        def browser_rnode(node: Node):
+            style = "padding: 2px; border-radius: 3px;"
+            if isinstance(node, ClassNode):
+                return f'<span style="background: #b7eb8f; color: black; {style}">[{node.id}] {node.label}</span>'
+            if isinstance(node, DataNode):
+                return f'<span style="background: #ffe58f; color: black; {style}">[{node.id}] {node.label} (column {node.col_index})</span>'
+            if isinstance(node, LiteralNode):
+                return f"<span style=\"background: {'#c6e5ff' if node.is_in_context else '#d3adf7'}; color: black; {style}\">[{node.id}] {node.readable_label}</span>"
+
+        def terminal_redge(edge: Edge):
             return f"─[{edge.id}: {Back.LIGHTMAGENTA_EX}{Fore.BLACK}{edge.label}{Style.RESET_ALL}]→"
 
+        def browser_redge(edge: Edge):
+            return f'<span>─[{edge.id}: <span style="text-decoration: underline; background: #ffadd2; color: black">{edge.label}</span>]→</span>'
+
+        if env == "terminal":
+            rnode = terminal_rnode
+            redge = terminal_redge
+        else:
+            rnode = browser_rnode
+            redge = browser_redge
+
         visited = {}
+        logs = []
 
         def dfs(start: Node):
-            print("")
+            logs.append("\n")
             stack: List[Tuple[int, Optional[Edge], Node]] = [(0, None, start)]
             while len(stack) > 0:
                 depth, edge, node = stack.pop()
@@ -598,12 +757,12 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
 
                 if node.id in visited:
                     msg += f" (visited at {visited[node.id]})"
-                    print(f"--.\t{msg}")
+                    logs.append(f"--.\t{msg}\n")
                     continue
 
                 counter = len(visited)
                 visited[node.id] = counter
-                print(f"{counter:02d}.\t{msg}")
+                logs.append(f"{counter:02d}.\t{msg}\n")
                 outedges = sorted(
                     self.out_edges(node.id),
                     key=lambda edge: f"0:{edge.abs_uri}"
@@ -630,3 +789,8 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
                 0
             ]
             dfs(n)
+
+        if env == "terminal":
+            print("".join(logs))
+        else:
+            return "<pre>" + "".join(logs) + "</pre>"
