@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sem-desc"
-version = "3.4.1"
+version = "3.4.2"
 description = "Package providing basic functionalities for the semantic modeling problem"
 authors = ["Binh Vu <binh@toan2.com>"]
 license = "MIT"
@@ -9,6 +9,9 @@ packages = [
 ]
 include = [
 ]
+readme = "README.md"
+homepage = "https://github.com/binh-vu/sm"
+repository = "https://github.com/binh-vu/sm"
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -16,9 +19,9 @@ pandas = "^1.4.1"
 python-slugify = "^5.0.2"
 lbry-rocksdb-optimized = "^0.8.1"
 pyrsistent = "^0.17.3"
-orjson = "^3.6.4"
-loguru = "^0.5.3"
-tqdm = "^4.63.1"
+orjson = "^3.6.8"
+loguru = ">=0.6.0"
+tqdm = "^4.64.0"
 matplotlib = "^3.4.2"
 pydot = "^1.4.2"
 ipython = "^8.0.1"
