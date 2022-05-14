@@ -93,7 +93,8 @@ class WikidataNamespace(Namespace):
     @classmethod
     def get_prop_id(cls, uri: str):
         if uri.startswith("http://www.wikidata.org/prop/"):
-            return uri.replace("http://www.wikidata.org/prop/", "")
+            # so this we can handle /prop/ and /prop/direct/
+            return uri[uri.rfind("/") + 1 :]
         if uri.startswith("http://www.wikidata.org/entity/P"):
             return uri.replace("http://www.wikidata.org/entity/P", "")
         raise OutOfNamespace(f"{uri} is not in wikidata property namespace")
