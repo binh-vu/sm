@@ -136,10 +136,10 @@ class DependentGroups(object):
 
     def __init__(self, pair_groups: List[PairLabelGroup]):
         self.pair_groups: List[PairLabelGroup] = pair_groups
-        self.X_triples: Set[NodeTriple] = pair_groups[0].X.node_triples
-        self.X_prime_triples: Set[NodeTriple] = pair_groups[0].X_prime.node_triples
+        self.X_triples: Set[NodeTriple] = set()
+        self.X_prime_triples: Set[NodeTriple] = set()
 
-        for pair in pair_groups[1:]:
+        for pair in pair_groups:
             self.X_triples = self.X_triples.union(pair.X.node_triples)
             self.X_prime_triples = self.X_prime_triples.union(pair.X_prime.node_triples)
 

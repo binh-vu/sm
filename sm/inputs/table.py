@@ -12,8 +12,9 @@ class ColumnBasedTable:
         self.columns = columns
         self.index2columns = {col.index: col for col in columns}
         self.df = self.as_dataframe()
-    
+
     def shape(self) -> Tuple[int, int]:
+        """Get shape of table: (number of rows, number of columns)"""
         if len(self.columns) == 0:
             return 0, 0
         return len(self.columns[0].values), len(self.columns)
@@ -39,7 +40,10 @@ class ColumnBasedTable:
     def subset(self, start_row: int, end_row: int):
         return ColumnBasedTable(
             self.table_id,
-            [Column(c.index, c.name, c.values[start_row:end_row]) for c in self.columns],
+            [
+                Column(c.index, c.name, c.values[start_row:end_row])
+                for c in self.columns
+            ],
         )
 
     def to_dict(self):
@@ -54,8 +58,10 @@ class ColumnBasedTable:
 
     @staticmethod
     def from_dict(record: dict):
-        assert record.get('version', None) == "2", record.get('version', None)
-        return ColumnBasedTable(record['table_id'], [Column(**col) for col in record['columns']])
+        assert record.get("version", None) == "2", record.get("version", None)
+        return ColumnBasedTable(
+            record["table_id"], [Column(**col) for col in record["columns"]]
+        )
 
     @staticmethod
     def from_dataframe(df: pd.DataFrame, table_id: str):
