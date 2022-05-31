@@ -101,20 +101,20 @@ class WikidataNamespace(Namespace):
 
     @classmethod
     def get_entity_abs_uri(cls, iid: str):
-        assert cls.is_valid_id(iid)
+        assert cls.is_valid_id(iid), iid
         return f"http://www.wikidata.org/entity/{iid}"
 
     @classmethod
     def get_prop_abs_uri(cls, pid: str):
-        assert cls.is_valid_id(pid)
+        assert cls.is_valid_id(pid), pid
         return f"http://www.wikidata.org/prop/{pid}"
 
     @classmethod
     def get_entity_rel_uri(cls, iid: str):
-        assert cls.is_valid_id(iid)
+        assert cls.is_valid_id(iid), iid
         return f"wd:{iid}"
 
     @classmethod
     def get_prop_rel_uri(cls, pid: str):
-        assert cls.is_valid_id(pid)
+        assert cls.is_valid_id(pid), pid
         return f"p:{pid}"
