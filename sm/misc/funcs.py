@@ -92,7 +92,9 @@ def get_latest_version(file_pattern: Union[str, Path]) -> int:
     return int(match.group(1))
 
 
-def get_incremental_path(path: Union[str, Path]) -> str:
+def get_incremental_path(
+    path: Union[str, Path], create_if_missing: bool = True
+) -> Path:
     path = Path(str(path))
     if path.suffix == "":
         char = "_"
@@ -102,16 +104,19 @@ def get_incremental_path(path: Union[str, Path]) -> str:
     pattern = path.parent / f"{path.stem}{char}*{path.suffix}"
     version = get_latest_version(pattern) + 1
 
-    return str(path.parent / f"{path.stem}{char}{version:02d}{path.suffix}")
+    newpath = path.parent / f"{path.stem}{char}{version:02d}{path.suffix}"
+    if create_if_missing:
+        newpath.mkdir(parents=True)
+    return newpath
 
 
-def get_latest_path(path: Union[str, Path]) -> Optional[str]:
+def get_latest_path(path: Union[str, Path]) -> Optional[Path]:
     path = Path(str(path))
     pattern = path.parent / f"{path.stem}.*{path.suffix}"
     version = get_latest_version(pattern)
     if version == 0:
         return None
-    return str(path.parent / f"{path.stem}.{version:02d}{path.suffix}")
+    return path.parent / f"{path.stem}.{version:02d}{path.suffix}"
 
 
 def auto_wrap(
@@ -195,6 +200,18 @@ def group_by(lst: Iterable[V], key: Callable[[V], K]) -> Dict[K, List[V]]:
         if k not in odict:
             odict[k] = []
         odict[k].append(item)
+    return odict
+
+
+def create_group_by_index(
+    lst: Iterable[V], key: Callable[[V], K]
+) -> Dict[K, List[int]]:
+    odict = {}
+    for i, item in enumerate(lst):
+        k = key(item)
+        if k not in odict:
+            odict[k] = []
+        odict[k].append(i)
     return odict
 
 
