@@ -93,18 +93,37 @@ def get_latest_version(file_pattern: Union[str, Path]) -> int:
 
 
 def get_incremental_path(
-    path: Union[str, Path], create_if_missing: bool = True
+    path: Union[str, Path],
+    create_if_missing: bool = True,
+    delimiter_char: Optional[str] = None,
 ) -> Path:
-    path = Path(str(path))
-    if path.suffix == "":
-        char = "_"
-    else:
-        char = "."
+    """Get an incremental path.
 
-    pattern = path.parent / f"{path.stem}{char}*{path.suffix}"
+    Example:
+        >>> get_incremental_path("/test/data")
+        '/test/data_01'
+        >>> mkdir('/test/data_01')
+        >>> # create a new folder with version 01, so the next time you call, it will be `data_02`
+        >>> get_incremental_path("/test/data")
+        '/test/data_02'
+
+    Arguments:
+        path: path to the folder you want to get incremental path
+        create_if_missing: if the parent directory does not exist, create it
+        delimiter_char: if you want to use a different delimiter, you can specify it here.
+            Default it is _ for no suffix path (folder) and . for file
+    """
+    path = Path(str(path))
+    if delimiter_char is None:
+        if path.suffix == "":
+            delimiter_char = "_"
+        else:
+            delimiter_char = "."
+
+    pattern = path.parent / f"{path.stem}{delimiter_char}*{path.suffix}"
     version = get_latest_version(pattern) + 1
 
-    newpath = path.parent / f"{path.stem}{char}{version:02d}{path.suffix}"
+    newpath = path.parent / f"{path.stem}{delimiter_char}{version:02d}{path.suffix}"
     if create_if_missing:
         newpath.mkdir(parents=True)
     return newpath
@@ -112,11 +131,11 @@ def get_incremental_path(
 
 def get_latest_path(path: Union[str, Path]) -> Optional[Path]:
     path = Path(str(path))
-    pattern = path.parent / f"{path.stem}.*{path.suffix}"
+    pattern = path.parent / f"{path.stem}*{path.suffix}"
     version = get_latest_version(pattern)
     if version == 0:
         return None
-    return path.parent / f"{path.stem}.{version:02d}{path.suffix}"
+    return path.parent / f"{path.stem}{version:02d}{path.suffix}"
 
 
 def auto_wrap(
