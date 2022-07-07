@@ -109,7 +109,9 @@ def get_incremental_path(
 
     Arguments:
         path: path to the folder you want to get incremental path
-        create_if_missing: if the parent directory does not exist, create it
+        create_if_missing:
+            if the path has a suffix, it is treated as a file and if its parent directory does not exist, create the parent directory.
+            if the path does not have a suffix, it is treated as a folder and create if it does not exist.
         delimiter_char: if you want to use a different delimiter, you can specify it here.
             Default it is _ for no suffix path (folder) and . for file
     """
@@ -125,7 +127,10 @@ def get_incremental_path(
 
     newpath = path.parent / f"{path.stem}{delimiter_char}{version:02d}{path.suffix}"
     if create_if_missing:
-        newpath.mkdir(parents=True)
+        if path.suffix == "":
+            newpath.parent.mkdir(parents=True)
+        else:
+            newpath.parent.mkdir(parents=True, exist_ok=True)
     return newpath
 
 
@@ -135,7 +140,9 @@ def get_latest_path(path: Union[str, Path]) -> Optional[Path]:
     version = get_latest_version(pattern)
     if version == 0:
         return None
-    return path.parent / f"{path.stem}{version:02d}{path.suffix}"
+
+    (match_path,) = list(path.parent.glob(f"{path.stem}*{version:02d}{path.suffix}"))
+    return match_path
 
 
 def auto_wrap(
