@@ -128,7 +128,7 @@ def get_incremental_path(
     newpath = path.parent / f"{path.stem}{delimiter_char}{version:02d}{path.suffix}"
     if create_if_missing:
         if path.suffix == "":
-            newpath.parent.mkdir(parents=True)
+            newpath.mkdir(parents=True)
         else:
             newpath.parent.mkdir(parents=True, exist_ok=True)
     return newpath
