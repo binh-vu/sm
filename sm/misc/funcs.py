@@ -1,5 +1,6 @@
 import glob
 from inspect import signature
+from multiprocessing import get_context
 import re
 import math
 from contextlib import contextmanager
@@ -9,6 +10,7 @@ from pathlib import Path
 from typing import (
     Dict,
     Iterable,
+    Literal,
     TypeVar,
     Union,
     Callable,
@@ -294,6 +296,7 @@ def parallel_map(
     use_threadpool=False,
     n_processes: Optional[int] = None,
     ignore_error: bool = False,
+    start_method: Literal["fork", "spawn", "forkserver"] = "fork",
 ):
     if not is_parallel:
         iter = (fn(item) for item in inputs)
@@ -311,7 +314,7 @@ def parallel_map(
             results = list(iter)
             results.sort(key=itemgetter(0))
     else:
-        with Pool(processes=n_processes) as pool:
+        with get_context(start_method).Pool(processes=n_processes) as pool:
             iter = pool.imap_unordered(
                 ParallelMapFnWrapper(fn, ignore_error).run, enumerate(inputs)
             )
