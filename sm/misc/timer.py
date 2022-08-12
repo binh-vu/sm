@@ -37,7 +37,13 @@ class Timer:
             count.stop()
 
     @contextmanager
-    def watch_and_report(self, msg: str, print_fn=None, precision: int = 3, append_to_file: Union[None, str, Path] = None):
+    def watch_and_report(
+        self,
+        msg: str,
+        print_fn=None,
+        precision: int = 3,
+        append_to_file: Union[None, str, Path] = None,
+    ):
         """Watch and report the timer results to stdout and optionally to a file
 
         Args:
@@ -56,6 +62,7 @@ class Timer:
             print_fn(msg + f": {format(end - start, f'.{precision}f')} seconds")
 
         if append_to_file is not None:
+            Path(append_to_file).parent.mkdir(parents=True, exist_ok=True)
             rows = []
             if not Path(append_to_file).exists():
                 rows.append(["name", "time"])
@@ -71,9 +78,14 @@ class Timer:
             self.categories[name] = 0.0
         return TimerCount(name, self)
 
-    def report(self, print_fn=None, precision: int = 3, append_to_file: Union[None, str, Path] = None):
+    def report(
+        self,
+        print_fn=None,
+        precision: int = 3,
+        append_to_file: Union[None, str, Path] = None,
+    ):
         """Report the timer results to stdout and optionally to a file
-        
+
         Args:
             print_fn: function to print the results
             precision: number of decimal places to round to
@@ -87,7 +99,7 @@ class Timer:
         print_fn("Runtime report:")
         for k, v in self.categories.items():
             print_fn(f"\t{k}: {format(v, f'.{precision}f')} seconds")
-        
+
         if append_to_file is not None:
             rows = []
             if not Path(append_to_file).exists():
