@@ -3,8 +3,7 @@ import os
 from pathlib import Path
 
 import orjson
-from typing import Callable, Tuple, Any, Dict, Optional, Union, TypeVar
-
+from typing import Callable, MutableMapping, Tuple, Any, Dict, Optional, Union, TypeVar
 
 F = TypeVar("F", bound=Callable)
 
@@ -13,6 +12,10 @@ class CacheMethod:
     @staticmethod
     def single_object_arg(args, _kwargs):
         return id(args[0])
+
+    @staticmethod
+    def single_literal_arg(args, _kwargs):
+        return args[0]
 
     @staticmethod
     def two_object_args(args, _kwargs):
@@ -80,3 +83,23 @@ def exec_or_skip_if_file_exist(filepath: Union[Path, str], skip: bool = False):
             fn()
 
     return wrapper_fn
+
+
+def cache_fn(
+    cache: MutableMapping[bytes, Any],
+    key: Optional[Callable[[str, tuple, dict], bytes]] = None,
+) -> Callable[[F], F]:
+    def wrapper_fn(func):
+        fn_name = func.__name__
+
+        @functools.wraps(func)
+        def fn(self, *args, **kwargs):
+
+            k = orjson.dumps((fn_name, args, kwargs))
+            if k not in cache:
+                cache[k] = func(self, *args, **kwargs)
+            return cache[k]
+
+        return fn
+
+    return wrapper_fn  # type: ignore
