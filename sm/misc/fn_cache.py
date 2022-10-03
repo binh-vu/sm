@@ -31,7 +31,8 @@ class CacheMethod:
 
     @staticmethod
     def cache(
-        key: Callable[[tuple, dict], Union[tuple, str, bytes, int]]
+        key: Callable[[tuple, dict], Union[tuple, str, bytes, int]],
+        cache_attr: str = "_cache",
     ) -> Callable[[F], F]:
         """Cache instance's method during its life-time.
         Note: Order of the arguments is important. Different order of the arguments will result in different cache key.
@@ -42,12 +43,13 @@ class CacheMethod:
 
             @functools.wraps(func)
             def fn(self, *args, **kwargs):
-                if not hasattr(self, "_cache"):
-                    self._cache = {}
+                if not hasattr(self, cache_attr):
+                    setattr(self, cache_attr, {})
+                cache = getattr(self, cache_attr)
                 k = (fn_name, key(args, kwargs))
-                if k not in self._cache:
-                    self._cache[k] = func(self, *args, **kwargs)
-                return self._cache[k]
+                if k not in cache:
+                    cache[k] = func(self, *args, **kwargs)
+                return cache[k]
 
             return fn
 
