@@ -11,7 +11,13 @@ class ColumnBasedTable:
         self.table_id = table_id
         self.columns = columns
         self.index2columns = {col.index: col for col in columns}
-        self.df = self.as_dataframe()
+        self._df: Optional[pd.DataFrame] = None
+
+    @property
+    def df(self) -> pd.DataFrame:
+        if self._df is None:
+            self._df = self.as_dataframe()
+        return self._df
 
     def shape(self) -> Tuple[int, int]:
         """Get shape of table: (number of rows, number of columns)"""

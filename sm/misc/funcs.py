@@ -416,3 +416,28 @@ class Proxy:
 
     def __getattr__(self, name):
         return getattr(self._object(), name)
+
+
+R = TypeVar("R")
+OBJECTS = {}
+
+
+def get_instance(constructor: Callable[[], R], name: Optional[str] = None) -> R:
+    """A utility function to get a singleton, which can be created from the given constructor.
+
+    One use case of this function is we have a big object that is expensive to send
+    to individual task repeatedly. If the process are retrieved from a pool,
+    this allows us to create the object per process instead of per task.
+    """
+    global OBJECTS
+
+    if name is None:
+        assert (
+            constructor.__name__ != "<lambda>"
+        ), "Cannot use lambda as a name because it will keep changing"
+        name = constructor  # type: ignore
+
+    if name not in OBJECTS:
+        logger.trace("Create a new instance of {}", name)
+        OBJECTS[name] = constructor()
+    return OBJECTS[name]
