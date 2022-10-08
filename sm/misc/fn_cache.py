@@ -30,6 +30,10 @@ class CacheMethod:
         return args
 
     @staticmethod
+    def as_json(args, kwargs):
+        return orjson.dumps((args, kwargs))
+
+    @staticmethod
     def cache(
         key: Callable[[tuple, dict], Union[tuple, str, bytes, int]],
         cache_attr: str = "_cache",
