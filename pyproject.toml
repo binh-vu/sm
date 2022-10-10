@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sem-desc"
-version = "3.8.1"
+version = "3.8.2"
 description = "Package providing basic functionalities for the semantic modeling problem"
 authors = ["Binh Vu <binh@toan2.com>"]
 license = "MIT"
@@ -30,6 +30,7 @@ ujson = "^5.1.0"
 colorama = ">=0.4.4"
 graph-wrapper = "^1.4.0"
 rdflib = "^6.1.1"
+lz4 = "^4.0.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.3"

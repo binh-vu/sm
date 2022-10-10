@@ -2,6 +2,7 @@ import bz2
 import csv
 import gzip
 import pickle
+import lz4.frame
 
 import chardet
 import orjson
@@ -37,6 +38,8 @@ def get_open_fn(infile: Union[str, Path]):
         return bz2.open
     elif infile.endswith(".gz"):
         return gzip.open
+    elif infile.endswith(".lz4"):
+        return lz4.frame.open
     else:
         return open
 
