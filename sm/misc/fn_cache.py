@@ -3,7 +3,17 @@ import os
 from pathlib import Path
 
 import orjson
-from typing import Callable, MutableMapping, Tuple, Any, Dict, Optional, Union, TypeVar
+from typing import (
+    Callable,
+    MutableMapping,
+    Sequence,
+    Tuple,
+    Any,
+    Dict,
+    Optional,
+    Union,
+    TypeVar,
+)
 
 F = TypeVar("F", bound=Callable)
 
@@ -30,8 +40,30 @@ class CacheMethod:
         return args
 
     @staticmethod
+    def as_is(args, kwargs):
+        return (args, tuple(kwargs.items()))
+
+    @staticmethod
     def as_json(args, kwargs):
         return orjson.dumps((args, kwargs))
+
+    @staticmethod
+    def selected_args(selection: Sequence[Union[int, str]]):
+        selected_args = sorted([x for x in selection if isinstance(x, int)])
+        selected_kwargs = sorted([x for x in selection if isinstance(x, str)])
+
+        def fn(args, kwargs):
+            sargs = []
+            skwargs = {}
+            for i in selected_args:
+                if i < len(args):
+                    sargs.append(args[i])
+            for k in selected_kwargs:
+                if k in kwargs:
+                    skwargs[k] = kwargs[k]
+            return orjson.dumps((sargs, skwargs))
+
+        return fn
 
     @staticmethod
     def cache(

@@ -221,6 +221,14 @@ def flatten_list(lst: list) -> list:
     return output
 
 
+def batch(size: int, *vars):
+    output = []
+    n = len(vars[0])
+    for i in range(0, n, size):
+        output.append(tuple(var[i : i + size] for var in vars))
+    return output
+
+
 def group_by(lst: Iterable[V], key: Callable[[V], K]) -> Dict[K, List[V]]:
     odict = {}
     for item in lst:
