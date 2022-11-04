@@ -7,6 +7,8 @@ from sm.inputs.column import Column
 
 
 class ColumnBasedTable:
+    __slots__ = ("table_id", "columns", "index2columns", "_df")
+
     def __init__(self, table_id: str, columns: List[Column]):
         self.table_id = table_id
         self.columns = columns

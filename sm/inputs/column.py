@@ -4,6 +4,8 @@ from typing import List, Optional
 
 
 class Column:
+    __slots__ = ("index", "name", "values")
+
     def __init__(self, index: int, name: Optional[str], values: List):
         """
         :param index: index of the column in the original table

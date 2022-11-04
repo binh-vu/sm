@@ -30,7 +30,7 @@ def load(
     ├── <table_fs_id>.json
     ├── ...
     tables (containing list of tables, the type of table depends on )
-    ├── <table_fs_id>.json
+    ├── <table_fs_id>.json[.gz|.bz2|.lz4]
     ├── ...
 
     We also support compressing formats such as .zip.
@@ -53,11 +53,12 @@ def load(
     data_dir = Path(data_dir)
     examples = []
     for infile in sorted((data_dir / "tables").iterdir()):
-        if infile.name.startswith("."):
+        suffixes = infile.suffixes
+        if infile.name.startswith(".") or len(suffixes) == 0:
             continue
-        if infile.name.endswith(".json"):
-            example_id = infile.stem
 
+        if suffixes[0] == ".json":
+            example_id = infile.stem
             table = table_deser(deserialize_json(infile))
 
             if (data_dir / f"descriptions/{example_id}").exists():

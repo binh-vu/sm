@@ -224,8 +224,12 @@ def flatten_list(lst: list) -> list:
 def batch(size: int, *vars):
     output = []
     n = len(vars[0])
-    for i in range(0, n, size):
-        output.append(tuple(var[i : i + size] for var in vars))
+    if len(vars) == 1:
+        for i in range(0, n, size):
+            output.append(vars[0][i : i + size])
+    else:
+        for i in range(0, n, size):
+            output.append(tuple(var[i : i + size] for var in vars))
     return output
 
 
