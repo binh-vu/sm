@@ -87,7 +87,11 @@ class WikidataNamespace(Namespace):
     @classmethod
     def get_entity_id(cls, uri: str):
         if uri.startswith("http://www.wikidata.org/entity/"):
-            return uri.replace("http://www.wikidata.org/entity/", "")
+            return uri[31:]
+        if uri.startswith("http://www.wikidata.org/wiki/"):
+            return uri[29:]
+        if uri.startswith("https://www.wikidata.org/wiki/"):
+            return uri[30:]
         raise OutOfNamespace(f"{uri} is not in wikidata entity namespace")
 
     @classmethod
@@ -96,7 +100,11 @@ class WikidataNamespace(Namespace):
             # so this we can handle /prop/ and /prop/direct/
             return uri[uri.rfind("/") + 1 :]
         if uri.startswith("http://www.wikidata.org/entity/P"):
-            return uri.replace("http://www.wikidata.org/entity/P", "")
+            return uri[31:]
+        if uri.startswith("http://www.wikidata.org/wiki/Property:"):
+            return uri[38:]
+        if uri.startswith("https://www.wikidata.org/wiki/Property:"):
+            return uri[39:]
         raise OutOfNamespace(f"{uri} is not in wikidata property namespace")
 
     @classmethod

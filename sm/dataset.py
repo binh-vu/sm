@@ -1,11 +1,18 @@
 from dataclasses import dataclass
 from pathlib import Path
 from zipfile import ZipFile
-from typing import List, TypeVar, Generic, Union, Callable
+from typing import List, Literal, Optional, TypeVar, Generic, Union, Callable
 import orjson
 
-from sm.misc import deserialize_json, get_latest_path
-from sm.outputs import SemanticModel
+from sm.misc.funcs import batch, get_latest_path
+from sm.misc.matrix import Matrix
+from sm.outputs.semantic_model import SemanticModel
+from sm.inputs.prelude import ColumnBasedTable, Context, Link
+from slugify import slugify
+from serde import json
+import shutil
+from urllib.parse import urlparse
+from hashlib import md5
 
 T = TypeVar("T")
 
@@ -16,92 +23,206 @@ class Example(Generic[T]):
     table: T
 
 
-def load(
-    data_dir: Union[str, Path], table_deser: Callable[[dict], T]
-) -> List[Example[T]]:
-    """Load dataset from a folder. Assuming the following structure:
+@dataclass
+class FullTable:
+    table: ColumnBasedTable
+    context: Context
+    links: Matrix[List[Link]]
 
-    descriptions (containing semantic descriptions of tables)
-    ├── <table_fs_id>
-    │   ├── version.01.json
-    │   ├── version.02.json
-    │   └── ...
-        or
-    ├── <table_fs_id>.json
-    ├── ...
-    tables (containing list of tables, the type of table depends on )
-    ├── <table_fs_id>.json[.gz|.bz2|.lz4]
-    ├── ...
+    def to_dict(self):
+        return {
+            "version": 2,
+            "table": self.table.to_dict(),
+            "context": self.context.to_dict(),
+            "links": [
+                [[link.to_dict() for link in cell] for cell in row]
+                for row in self.links.data
+            ],
+        }
 
-    We also support compressing formats such as .zip.
-    descriptions
-    ├── part-<num>.zip (no nested version folders)
-    │   ├── <table_fs_id>.json
-    |   |   ...
-    tables
-    ├── part-<num>.zip
-    │   ├── <table_fs_id>.json
-    |   |   ...
+    @classmethod
+    def from_dict(cls, obj: dict):
+        version = obj["version"]
+        if not (version == "1.2" or version == "1.1" or version == 2):
+            raise ValueError(f"Unknown version: {version}")
 
-    Args:
-        data_dir:
-        table_deser: deserialize the table from dictionary
+        return cls(
+            table=ColumnBasedTable.from_dict(obj["table"]),
+            context=Context.from_dict(obj["context"]),
+            links=Matrix(
+                [
+                    [[Link.from_dict(link) for link in cell] for cell in row]
+                    for row in obj["links"]
+                ]
+            ),
+        )
 
-    Returns:
 
-    """
-    data_dir = Path(data_dir)
-    examples = []
-    for infile in sorted((data_dir / "tables").iterdir()):
-        suffixes = infile.suffixes
-        if infile.name.startswith(".") or len(suffixes) == 0:
-            continue
+@dataclass
+class Dataset:
+    location: Path
 
-        if suffixes[0] == ".json":
-            example_id = infile.stem
-            table = table_deser(deserialize_json(infile))
+    @property
+    def description_dir(self) -> Path:
+        return self.location / "descriptions"
 
-            if (data_dir / f"descriptions/{example_id}").exists():
-                desc_file = get_latest_path(
-                    data_dir / f"descriptions/{example_id}/version.json"
+    @property
+    def table_dir(self) -> Path:
+        return self.location / "tables"
+
+    def load(self) -> List[Example[FullTable]]:
+        """Load dataset from a folder. Assuming the following structure:
+
+        descriptions (containing semantic descriptions of tables)
+        ├── <table_fs_id>
+        │   ├── version.01.json
+        │   ├── version.02.json
+        │   └── ...
+            or
+        ├── <table_fs_id>.json
+        ├── ...
+        tables (containing list of tables, the type of table depends on )
+        ├── <table_fs_id>.json[.gz|.bz2|.lz4]
+        ├── ...
+
+        We also support compressing formats such as .zip.
+        descriptions
+        ├── part-<num>.zip (no nested version folders)
+        │   ├── <table_fs_id>.json
+        |   |   ...
+        tables
+        ├── part-<num>.zip
+        │   ├── <table_fs_id>.json
+        |   |   ...
+
+        Args:
+            data_dir:
+
+        Returns:
+
+        """
+        descdir = self.description_dir
+        tabledir = self.table_dir
+
+        examples = []
+        for infile in sorted(tabledir.iterdir()):
+            suffixes = infile.suffixes
+            if infile.name.startswith(".") or len(suffixes) == 0:
+                continue
+
+            if suffixes[0] == ".json":
+                example_id = infile.name[: -sum(len(x) for x in suffixes)]
+                table = json.deser(infile, FullTable)
+
+                if (descdir / example_id).exists():
+                    desc_file = get_latest_path(descdir / f"{example_id}/version.json")
+                    assert desc_file is not None
+                else:
+                    desc_file = descdir / f"{example_id}.json"
+                    assert desc_file.exists()
+
+                raw_sms = json.deser(desc_file)
+                sms = [SemanticModel.from_dict(sm) for sm in raw_sms]
+
+                examples.append(Example(sms=sms, table=table))
+            elif infile.name.endswith(".zip"):
+
+                part = {}
+                with ZipFile(infile, mode="r") as zf:
+                    for file in zf.infolist():
+                        if not file.filename.endswith(".json"):
+                            continue
+
+                        table_id = Path(file.filename).stem
+                        with zf.open(file, mode="r") as f:
+                            table = FullTable.from_dict(orjson.loads(f.read()))
+                        part[table_id] = table
+
+                lst = []
+                with ZipFile(descdir / infile.name, mode="r") as zf:
+                    for file in zf.infolist():
+                        table_id = Path(file.filename).stem
+                        if table_id not in part:
+                            continue
+
+                        assert file.filename.endswith(".json")
+                        with zf.open(file, mode="r") as f:
+                            sms = [
+                                SemanticModel.from_dict(sm)
+                                for sm in orjson.loads(f.read())
+                            ]
+                            lst.append(Example(sms=sms, table=part[table_id]))
+
+                assert len(lst) == len(part)
+                examples.extend(lst)
+
+        return examples
+
+    def save(
+        self,
+        examples: List[Example[FullTable]],
+        individual_table_compressed: Optional[Literal["gz", "bz2", "lz4"]] = None,
+        batch_compressed: bool = False,
+        batch_size: int = 100,
+    ):
+        descdir = self.description_dir
+        if descdir.exists():
+            shutil.rmtree(descdir)
+        descdir.mkdir(parents=True)
+
+        tabledir = self.table_dir
+        if tabledir.exists():
+            shutil.rmtree(tabledir)
+        tabledir.mkdir(parents=True)
+
+        if batch_compressed:
+            for i, bexamples in enumerate(batch(batch_size, examples)):
+                bexamples: List[Example[FullTable]]
+                filename = f"part-{i:04d}.zip"
+                with ZipFile(descdir / filename, "w") as dzf, ZipFile(
+                    tabledir / filename, "w"
+                ) as tzf:
+                    for e in bexamples:
+                        ename = get_friendly_fs_id(e.table.table.table_id) + ".json"
+                        dzf.writestr(
+                            ename,
+                            data=orjson.dumps([sm.to_dict() for sm in e.sms]),
+                        )
+                        tzf.writestr(
+                            ename,
+                            data=orjson.dumps(e.table.to_dict()),
+                        )
+        else:
+            for e in examples:
+                filename = get_friendly_fs_id(e.table.table.table_id) + ".json"
+                compressed_filename = (
+                    filename + f".{individual_table_compressed}"
+                    if individual_table_compressed is not None
+                    else filename
                 )
-                assert desc_file is not None
-            else:
-                desc_file = data_dir / f"descriptions/{example_id}.json"
-                assert desc_file.exists()
+                json.ser([sm.to_dict() for sm in e.sms], descdir / filename, indent=2)
+                json.ser(e.table, tabledir / compressed_filename)
 
-            raw_sms = deserialize_json(desc_file)
-            sms = [SemanticModel.from_dict(sm) for sm in raw_sms]
 
-            examples.append(Example(sms=sms, table=table))
-        elif infile.name.endswith(".zip"):
+def get_friendly_fs_id(id: str) -> str:
+    if id.startswith("http://") or id.startswith("https://"):
+        if id.find("dbpedia.org") != -1:
+            return (
+                slugify(
+                    urlparse(id).path.replace("/resource/", "").replace("/", "_")
+                ).replace("-", "_")
+                + "_"
+                + md5(id.encode()).hexdigest()
+            )
 
-            part = {}
-            with ZipFile(infile, mode="r") as zf:
-                for file in zf.infolist():
-                    if not file.filename.endswith(".json"):
-                        continue
+        if id.find("wikipedia.org") != -1:
+            return (
+                slugify(
+                    urlparse(id).path.replace("/wiki/", "").replace("/", "_")
+                ).replace("-", "_")
+                + "_"
+                + md5(id.encode()).hexdigest()
+            )
 
-                    table_id = Path(file.filename).stem
-                    with zf.open(file, mode="r") as f:
-                        table = table_deser(orjson.loads(f.read()))
-                    part[table_id] = table
-
-            lst = []
-            with ZipFile(data_dir / "descriptions" / infile.name, mode="r") as zf:
-                for file in zf.infolist():
-                    table_id = Path(file.filename).stem
-                    if table_id not in part:
-                        continue
-
-                    assert file.filename.endswith(".json")
-                    with zf.open(file, mode="r") as f:
-                        sms = [
-                            SemanticModel.from_dict(sm) for sm in orjson.loads(f.read())
-                        ]
-                        lst.append(Example(sms=sms, table=part[table_id]))
-
-            assert len(lst) == len(part)
-            examples.extend(lst)
-
-    return examples
+        raise NotImplementedError()
+    return slugify(id.replace("/", "_")).replace("-", "_")

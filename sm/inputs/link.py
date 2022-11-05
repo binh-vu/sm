@@ -48,14 +48,14 @@ class Link:
     @staticmethod
     def from_dict(obj: dict):
         version = obj.get("version")
-        if version is None:
+        if version == 2:
             return Link(
                 start=obj["start"],
                 end=obj["end"],
                 url=obj["url"],
                 entities=[EntityId.from_dict(e) for e in obj["entities"]],
             )
-        if version == 2:
+        if version is None:
             return Link(
                 start=obj["start"],
                 end=obj["end"],

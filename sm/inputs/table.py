@@ -1,5 +1,5 @@
 from collections import OrderedDict, defaultdict
-from typing import List, Optional, Tuple
+from typing import List, Optional, Sequence, Tuple, Union
 
 import pandas as pd
 
@@ -58,7 +58,7 @@ class ColumnBasedTable:
         return {
             "version": "2",
             "table_id": self.table_id,
-            "columns": [col.__dict__ for col in self.columns],
+            "columns": [col.to_dict() for col in self.columns],
         }
 
     def __getitem__(self, item: Tuple[int, int]):
@@ -68,7 +68,11 @@ class ColumnBasedTable:
     def from_dict(record: dict):
         assert record.get("version", None) == "2", record.get("version", None)
         return ColumnBasedTable(
-            record["table_id"], [Column(**col) for col in record["columns"]]
+            record["table_id"],
+            [
+                Column(col["index"], col["name"], col["values"])
+                for col in record["columns"]
+            ],
         )
 
     @staticmethod
@@ -78,4 +82,29 @@ class ColumnBasedTable:
             values = [r[ci] for ri, r in df.iterrows()]
             column = Column(ci, c, values)
             columns.append(column)
+        return ColumnBasedTable(table_id, columns)
+
+    @staticmethod
+    def from_rows(
+        records: Sequence[Sequence[Union[str, int, float, bool]]],
+        table_id: str,
+        headers: Optional[Sequence[str]] = None,
+        strict: bool = False,
+    ):
+        if len(records) == 0:
+            return ColumnBasedTable(table_id, [])
+
+        if headers is None:
+            headers = ["" for _ in range(len(records[0]))]
+
+        if strict:
+            ncols = len(headers)
+            assert all(
+                len(r) == ncols for r in records
+            ), "All rows must have the same number of columns"
+
+        columns = []
+        for ci, col in enumerate(headers):
+            columns.append(Column(ci, col, values=[r[ci] for r in records]))
+
         return ColumnBasedTable(table_id, columns)

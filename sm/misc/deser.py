@@ -12,8 +12,10 @@ from typing import Union, List, Sequence, Optional, Any
 
 import ujson
 from ruamel.yaml import YAML
+from deprecated import deprecated
 
 
+@deprecated(reason="use serde2 package instead")
 def get_open_fn(infile: Union[str, Path]):
     """Get the correct open function for the input file based on its extension. Supported bzip2, gz
 

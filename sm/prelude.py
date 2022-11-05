@@ -1,5 +1,5 @@
-import sm.inputs as I
-import sm.outputs as O
-import sm.misc as M
+import sm.inputs.prelude as I
+import sm.outputs.semantic_model as O
+import sm.misc.prelude as M
 
 from sm.evaluation import sm_metrics

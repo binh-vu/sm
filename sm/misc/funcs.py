@@ -4,7 +4,7 @@ from multiprocessing import get_context
 import re
 import math
 from contextlib import contextmanager
-from multiprocessing.pool import Pool, ThreadPool
+from multiprocessing.pool import ThreadPool
 from operator import itemgetter
 from pathlib import Path
 from typing import (

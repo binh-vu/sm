@@ -28,3 +28,6 @@ class Column:
 
     def __setitem__(self, key, value):
         self.values[key] = value
+
+    def to_dict(self):
+        return {"index": self.index, "name": self.name, "values": self.values}

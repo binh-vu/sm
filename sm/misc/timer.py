@@ -3,8 +3,10 @@ from pathlib import Path
 import time
 from contextlib import contextmanager
 from typing import Union
+from deprecated import deprecated
 
 
+@deprecated(reason="use timer4 package instead")
 class TimerCount:
     def __init__(self, name: str, timer: "Timer"):
         self.name = name
@@ -16,6 +18,7 @@ class TimerCount:
         return self.timer
 
 
+@deprecated(reason="use timer4 package instead")
 class Timer:
     instance = None
 

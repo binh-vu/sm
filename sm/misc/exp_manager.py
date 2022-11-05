@@ -10,8 +10,10 @@ import pandas as pd
 from sm.misc.deser import deserialize_csv, serialize_csv, serialize_json
 from sm.misc.funcs import get_incremental_path
 from sm.misc.timer import Timer
+from deprecated import deprecated
 
 
+@deprecated(reason="use osin & wandb instead")
 class ExpManager:
     def __init__(
         self,

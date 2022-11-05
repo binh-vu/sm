@@ -3,7 +3,7 @@ from typing import Set, Optional, Dict
 
 from sm.evaluation import sm_metrics
 
-from sm.outputs import SemanticModel, DataNode
+from sm.outputs.semantic_model import SemanticModel, DataNode
 from sm.evaluation.transformation import SemModelTransformation
 from sm.outputs.semantic_model import ClassNode
 

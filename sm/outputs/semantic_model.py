@@ -18,7 +18,8 @@ from IPython import get_ipython
 from IPython.display import display
 from PIL import Image
 from rdflib.namespace import RDFS
-from sm.misc import auto_wrap, group_by, Bijection
+from sm.misc.funcs import auto_wrap, group_by
+from sm.misc.bijection import Bijection
 
 
 @dataclass

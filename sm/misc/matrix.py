@@ -12,8 +12,18 @@ class Matrix(Generic[T]):
 
     data: List[List[T]]
 
+    @overload
     @staticmethod
-    def default(shp: Tuple[int, int], default: T | Callable[[], T]) -> Matrix[T]:
+    def default(shp: Tuple[int, int], default: Callable[[], T]) -> Matrix[T]:
+        pass
+
+    @overload
+    @staticmethod
+    def default(shp: Tuple[int, int], default: T) -> Matrix[T]:
+        pass
+
+    @staticmethod
+    def default(shp: Tuple[int, int], default: Callable[[], T] | T) -> Matrix[T]:
         if callable(default):
             return Matrix([[default() for _ in range(shp[1])] for _ in range(shp[0])])
         return Matrix([[default for _ in range(shp[1])] for _ in range(shp[0])])
