@@ -4,7 +4,8 @@ from typing import List, Optional
 
 
 class Column:
-    __slots__ = ("index", "name", "values")
+    # conflict with cached_property
+    # __slots__ = ("index", "name", "values")
 
     def __init__(self, index: int, name: Optional[str], values: List):
         """
