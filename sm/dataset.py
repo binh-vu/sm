@@ -164,16 +164,18 @@ class Dataset:
         individual_table_compressed: Optional[Literal["gz", "bz2", "lz4"]] = None,
         batch_compressed: bool = False,
         batch_size: int = 100,
+        table_fmt_indent: Literal[0, 2] = 0,
+        clean_previous_data: bool = True,
     ):
         descdir = self.description_dir
-        if descdir.exists():
+        if descdir.exists() and clean_previous_data:
             shutil.rmtree(descdir)
-        descdir.mkdir(parents=True)
+        descdir.mkdir(parents=True, exist_ok=True)
 
         tabledir = self.table_dir
-        if tabledir.exists():
+        if tabledir.exists() and clean_previous_data:
             shutil.rmtree(tabledir)
-        tabledir.mkdir(parents=True)
+        tabledir.mkdir(parents=True, exist_ok=True)
 
         if batch_compressed:
             for i, bexamples in enumerate(batch(batch_size, examples)):
@@ -194,14 +196,21 @@ class Dataset:
                         )
         else:
             for e in examples:
-                filename = get_friendly_fs_id(e.table.table.table_id) + ".json"
+                filename = get_friendly_fs_id(e.table.table.table_id)
+                (descdir / filename).mkdir(exist_ok=True)
                 compressed_filename = (
-                    filename + f".{individual_table_compressed}"
+                    filename + f".json.{individual_table_compressed}"
                     if individual_table_compressed is not None
-                    else filename
+                    else filename + ".json"
                 )
-                json.ser([sm.to_dict() for sm in e.sms], descdir / filename, indent=2)
-                json.ser(e.table, tabledir / compressed_filename)
+                json.ser(
+                    [sm.to_dict() for sm in e.sms],
+                    descdir / filename / "version.01.json",
+                    indent=2,
+                )
+                json.ser(
+                    e.table, tabledir / compressed_filename, indent=table_fmt_indent
+                )
 
 
 def get_friendly_fs_id(id: str) -> str:
@@ -225,4 +234,4 @@ def get_friendly_fs_id(id: str) -> str:
             )
 
         raise NotImplementedError()
-    return slugify(id.replace("/", "_")).replace("-", "_")
+    return slugify(id.replace("/", "_"), lowercase=False).replace("-", "_")
