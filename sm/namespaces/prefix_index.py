@@ -1,20 +1,24 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
+from collections.abc import Mapping
 from typing import Dict, List, Optional, Tuple, Union
 
 
-@dataclass
 class PrefixIndex:
     """Namespace indexing so we can quickly get prefix of a URI."""
 
-    index: Dict[str, Union[PrefixIndex, str]]
-    start: int
-    end: int
+    __slots__ = ("index", "start", "end")
+
+    def __init__(
+        self, index: dict[str, PrefixIndex | str], start: int, end: int
+    ) -> None:
+        self.index = index
+        self.start = start
+        self.end = end
 
     @staticmethod
-    def create(ns2prefix: Dict[str, str]):
+    def create(ns2prefix: Mapping[str, str]):
         sorted_ns = sorted(ns2prefix.keys(), key=lambda x: len(x), reverse=True)
         if len(sorted_ns) == 0:
             raise Exception("No namespace provided")
@@ -22,9 +26,9 @@ class PrefixIndex:
         return PrefixIndex._create(ns2prefix, sorted_ns, 0)
 
     @staticmethod
-    def _create(ns2prefix: Dict[str, str], nses: List[str], start: int):
+    def _create(ns2prefix: Mapping[str, str], nses: List[str], start: int):
         shortest_ns = nses[-1]
-        index = PrefixIndex(index={}, start=start, end=len(shortest_ns))
+        index = PrefixIndex({}, start, len(shortest_ns))
 
         if index.start == index.end:
             # we have an empty key, it must have more than one element because of the previous call

@@ -1,8 +1,9 @@
 from __future__ import annotations
-from typing import Dict, Union
+
+from abc import ABC, abstractmethod
 from pathlib import Path
-from dataclasses import dataclass
-from sm.misc.deser import deserialize_yml
+
+import serde.yaml
 
 from sm.namespaces.prefix_index import PrefixIndex
 
@@ -14,23 +15,29 @@ class OutOfNamespace(Exception):
 default_ns_file = Path(__file__).absolute().parent.parent / "data/namespaces.yml"
 
 
-@dataclass
 class Namespace:
     """A helper class for converting between absolute URI and relative URI."""
 
-    __slots__ = ("prefix2ns", "prefix_index")
+    __slots__ = ("prefix2ns", "ns2prefix", "prefix_index")
 
-    prefix2ns: Dict[str, str]
-    prefix_index: PrefixIndex
+    def __init__(
+        self,
+        prefix2ns: dict[str, str],
+        ns2prefix: dict[str, str],
+        prefix_index: PrefixIndex,
+    ):
+        self.prefix2ns = prefix2ns
+        self.ns2prefix = ns2prefix
+        self.prefix_index = prefix_index
 
     @classmethod
-    def from_file(cls, infile: Union[Path, str] = default_ns_file):
-        prefix2ns = dict(deserialize_yml(infile))
+    def from_file(cls, infile: Path | str = default_ns_file):
+        prefix2ns = dict(serde.yaml.deser(infile))
         ns2prefix = {v: k for k, v in prefix2ns.items()}
         assert len(ns2prefix) == len(prefix2ns), "Duplicated namespaces"
         prefix_index = PrefixIndex.create(ns2prefix)
 
-        return cls(prefix2ns=prefix2ns, prefix_index=prefix_index)
+        return cls(prefix2ns, ns2prefix, prefix_index)
 
     def get_abs_uri(self, rel_uri: str):
         """Get absolute URI from relative URI."""
@@ -77,3 +84,26 @@ class Namespace:
             self.prefix2ns[prefix] == ns.prefix2ns[prefix]
             for prefix in set(self.prefix2ns.keys()).intersection(ns.prefix2ns.keys())
         )
+
+
+class KnowledgeGraphNamespace(ABC, Namespace):
+    """Abstract class for knowledge graph namespaces that allows to detect and convert between entity URIs and IDs"""
+
+    @classmethod
+    @abstractmethod
+    def is_abs_uri_entity(cls, uri: str) -> bool:
+        ...
+
+    @classmethod
+    @abstractmethod
+    def get_entity_id(cls, uri: str) -> str:
+        ...
+
+    @classmethod
+    @abstractmethod
+    def get_entity_abs_uri(cls, iid: str) -> str:
+        ...
+
+    @abstractmethod
+    def get_entity_rel_uri(self, iid: str) -> str:
+        ...
