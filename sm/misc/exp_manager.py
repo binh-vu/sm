@@ -7,10 +7,10 @@ from typing import Optional, Dict, Union
 
 import pandas as pd
 
-from sm.misc.deser import deserialize_csv, serialize_csv, serialize_json
 from sm.misc.funcs import get_incremental_path
-from sm.misc.timer import Timer
+from timer import Timer
 from deprecated import deprecated
+import serde.json, serde.csv
 
 
 @deprecated(reason="use osin & wandb instead")
@@ -60,9 +60,7 @@ class ExpManager:
         else:
             self.current_run_dir = Path(get_incremental_path(self.workdir / "v"))
         self.current_run_dir.mkdir(exist_ok=True, parents=True)
-        serialize_json(
-            self.exp_params, self.current_run_dir / "exp_params.json", indent=4
-        )
+        serde.json(self.exp_params, self.current_run_dir / "exp_params.json", indent=4)
 
         if self.integrate_neptune:
             with Timer.get_instance().watch_and_report(
@@ -117,7 +115,7 @@ class ExpResults:
             self.delimiter = "\t"
 
         if self.outfile.exists():
-            records = deserialize_csv(self.outfile, self.delimiter)
+            records = serde.csv.deser(self.outfile, self.delimiter)
             self.headers = records[0]
             for record in records[1:]:
                 record = dict(zip(self.headers, record))
@@ -132,12 +130,12 @@ class ExpResults:
             new_record[k] = v
         if self.headers is None:
             self.headers = list(new_record.keys())
-            serialize_csv(
+            serde.csv.ser(
                 [self.headers], self.outfile, mode="a", delimiter=self.delimiter
             )
 
         self.records[id] = new_record
-        serialize_csv(
+        serde.csv.ser(
             [[new_record[k] for k in self.headers]],
             self.outfile,
             mode="a",

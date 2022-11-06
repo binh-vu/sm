@@ -1,18 +1,20 @@
 import bz2
 import csv
 import gzip
+import json
 import pickle
-import lz4.frame
+from pathlib import Path
+from typing import Any, List, Optional, Sequence, Union
+from warnings import warn
 
 import chardet
+import lz4.frame
 import orjson
-import json
-from pathlib import Path
-from typing import Union, List, Sequence, Optional, Any
-
 import ujson
-from ruamel.yaml import YAML
 from deprecated import deprecated
+from ruamel.yaml import YAML
+
+warn(f"{__name__} is deprecated", DeprecationWarning, stacklevel=2)
 
 
 @deprecated(reason="use serde2 package instead")

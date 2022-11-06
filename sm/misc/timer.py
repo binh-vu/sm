@@ -1,9 +1,13 @@
 import csv
-from pathlib import Path
 import time
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Union
+from warnings import warn
+
 from deprecated import deprecated
+
+warn(f"{__name__} is deprecated", DeprecationWarning, stacklevel=2)
 
 
 @deprecated(reason="use timer4 package instead")
