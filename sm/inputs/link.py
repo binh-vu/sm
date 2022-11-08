@@ -24,6 +24,9 @@ class EntityId(str):
             type=obj["type"],
         )
 
+    def __getnewargs__(self) -> tuple[str, str]:
+        return str(self), self.type
+
 
 class Link:
     __slots__ = ("start", "end", "url", "entities")
