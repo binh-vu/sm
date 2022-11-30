@@ -29,6 +29,13 @@ class FullTable:
     context: Context
     links: Matrix[List[Link]]
 
+    def keep_rows(self, row_index: list[int]):
+        """Keep only the rows in the table that are in row_index."""
+        self.links.data = [self.links.data[i] for i in row_index]
+        self.table._df = None
+        for col in self.table.columns:
+            col.values = [col.values[i] for i in row_index]
+
     def to_dict(self):
         return {
             "version": 2,
