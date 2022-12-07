@@ -87,11 +87,14 @@ def get_latest_version(file_pattern: Union[str, Path]) -> int:
     if len(files) == 0:
         return 0
 
-    file = sorted(files)[-1]
-    match = re.match("[^0-9]*(\d+)[^0-9]*", file.name)
-    if match is None:
-        raise Exception("Invalid naming")
-    return int(match.group(1))
+    versions = []
+    for file in files:
+        match = re.match(r"[^0-9]*(\d+)[^0-9]*", file.name)
+        if match is None:
+            raise Exception("Invalid naming")
+        versions.append(int(match.group(1)))
+
+    return sorted(versions)[-1]
 
 
 def get_incremental_path(
