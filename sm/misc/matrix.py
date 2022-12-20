@@ -38,6 +38,9 @@ class Matrix(Generic[T]):
             raise ValueError("Matrix is not rectangular")
         return nrows, ncols.pop()
 
+    def clone(self):
+        return Matrix([row.copy() for row in self.data])
+
     @overload
     def __getitem__(self, item: int | Tuple[int, slice] | Tuple[slice, int]) -> List[T]:
         ...

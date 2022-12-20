@@ -21,6 +21,9 @@ class ColumnBasedTable:
             self._df = self.as_dataframe()
         return self._df
 
+    def keep_columns(self, columns: list[int]):
+        return ColumnBasedTable(self.table_id, [self.index2columns[c] for c in columns])
+
     def shape(self) -> Tuple[int, int]:
         """Get shape of table: (number of rows, number of columns)"""
         if len(self.columns) == 0:
