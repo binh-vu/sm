@@ -224,10 +224,16 @@ def flatten_list(lst: list) -> list:
     return output
 
 
-def batch(size: int, *vars):
+def batch(size: int, *vars, return_tuple: bool = False):
+    """Batch the variables into batches of size. When vars is a single variable,
+    it will return a list of batched values instead of list of tuple of batched values.
+
+    If we want to batch a single variable to a list of tuple of batched values, set
+    return_tuple to True.
+    """
     output = []
     n = len(vars[0])
-    if len(vars) == 1:
+    if len(vars) == 1 and not return_tuple:
         for i in range(0, n, size):
             output.append(vars[0][i : i + size])
     else:
