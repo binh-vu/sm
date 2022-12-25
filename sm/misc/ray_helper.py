@@ -14,6 +14,11 @@ R = TypeVar("R")
 OBJECTS = {}
 
 
+def ray_init():
+    if not ray.is_initialized():
+        ray.init()
+
+
 def ray_map(
     remote_fn: Callable[..., "ray.ObjectRef[R]"],
     args_lst: List[Union[list, tuple]],
