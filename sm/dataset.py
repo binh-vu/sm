@@ -29,7 +29,7 @@ class FullTable:
     context: Context
     links: Matrix[List[Link]]
 
-    def keep_rows(self, row_index: list[int]):
+    def keep_rows(self, row_index: List[int]):
         """Keep only the rows in the table that are in row_index."""
         self.links.data = [self.links.data[i] for i in row_index]
         self.table._df = None
