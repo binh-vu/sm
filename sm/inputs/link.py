@@ -28,8 +28,24 @@ class EntityId(str):
         return str(self), self.type
 
 
+WIKIDATA = "wikidata"
+WIKIDATA_NIL_ENTITY = EntityId("Q0", WIKIDATA)
+
+
 class Link:
     __slots__ = ("start", "end", "url", "entities")
+    """Represent a link in a cell, a link may not cover the whole cell, so a cell
+    may have multiple links.
+
+    Attributes:
+        start: start index of the link in the cell
+        end: end index of the link in the cell
+        url: url of the link, none means there is no hyperlink
+        entities: entities linked by the link, each entity is from each knowledge graph.
+            If entities is empty, it means the link should not link to any entity.
+            If an entity of a target KG is NIL, it means the link should link to NIL entity
+            because there is no corresponding entity in that knowledge graph.
+    """
 
     def __init__(
         self, start: int, end: int, url: Optional[str], entities: List[EntityId]
@@ -63,7 +79,7 @@ class Link:
                 start=obj["start"],
                 end=obj["end"],
                 url=obj["url"],
-                entities=[EntityId(id=eid, type="wikidata")]
+                entities=[EntityId(id=eid, type=WIKIDATA)]
                 if (eid := obj["entity_id"]) is not None
                 else [],
             )

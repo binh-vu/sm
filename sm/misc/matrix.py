@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Iterator, TypeVar, Generic, List, Tuple, overload, Union
-
+from copy import deepcopy
 
 T = TypeVar("T")
 
@@ -40,6 +40,9 @@ class Matrix(Generic[T]):
 
     def clone(self):
         return Matrix([row.copy() for row in self.data])
+
+    def deep_copy(self):
+        return Matrix([[deepcopy(item) for item in row] for row in self.data])
 
     @overload
     def __getitem__(self, item: int | Tuple[int, slice] | Tuple[slice, int]) -> List[T]:

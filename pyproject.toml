@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sem-desc"
-version = "4.1.8"
+version = "4.2.0"
 description = "Package providing basic functionalities for the semantic modeling problem"
 authors = ["Binh Vu <binh@toan2.com>"]
 license = "MIT"

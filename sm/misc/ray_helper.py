@@ -14,9 +14,9 @@ R = TypeVar("R")
 OBJECTS = {}
 
 
-def ray_init():
+def ray_init(**kwargs):
     if not ray.is_initialized():
-        ray.init()
+        ray.init(**kwargs)
 
 
 def ray_map(
