@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 import ray
 from typing import (
     TypeVar,
@@ -21,7 +22,7 @@ def ray_init(**kwargs):
 
 def ray_map(
     remote_fn: Callable[..., "ray.ObjectRef[R]"],
-    args_lst: List[Union[list, tuple]],
+    args_lst: Sequence[Sequence],
     verbose: bool = False,
     poll_interval: float = 0.1,
     concurrent_submissions: int = 3000,

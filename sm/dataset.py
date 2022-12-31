@@ -14,7 +14,7 @@ import shutil
 from urllib.parse import urlparse
 from hashlib import md5
 
-T = TypeVar("T")
+T = TypeVar("T", covariant=True)
 
 
 @dataclass
