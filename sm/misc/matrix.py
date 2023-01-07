@@ -4,6 +4,7 @@ from typing import Callable, Iterator, TypeVar, Generic, List, Tuple, overload, 
 from copy import deepcopy
 
 T = TypeVar("T")
+T1 = TypeVar("T1")
 
 
 @dataclass
@@ -83,3 +84,6 @@ class Matrix(Generic[T]):
             for ri, row in enumerate(self.data)
             for ci, item in enumerate(row)
         )
+
+    def map(self, fn: Callable[[T], T1]) -> Matrix[T1]:
+        return Matrix([[fn(item) for item in row] for row in self.data])

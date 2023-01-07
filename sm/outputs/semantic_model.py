@@ -3,7 +3,7 @@ import tempfile
 from copy import copy
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Set, Tuple, Union, cast
+from typing import Callable, Dict, List, Literal, Optional, Set, Tuple, Union, cast
 
 import matplotlib.pyplot as plt
 import orjson
@@ -101,7 +101,7 @@ class DataNode(BaseNode[int]):
 
 class LiteralNodeDataType(str, enum.Enum):
     String = "string"
-    # should use full URI
+    # although the string is entity-id, the expected value is the entity's full URI
     Entity = "entity-id"
 
 
@@ -363,6 +363,24 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
         with open(infile, "rb") as f:
             record = orjson.loads(f.read())
             return SemanticModel.from_dict(record)
+
+    def add_readable_label(
+        self, fn: Callable[[Union[ClassNode, LiteralNode, Edge]], None]
+    ):
+        """Add readable label to all nodes and edges that don't have one yet.
+
+        Note: this function will mutate the semantic model.
+        """
+        for node in self.iter_nodes():
+            if (
+                isinstance(node, (ClassNode, LiteralNode))
+                and node.readable_label is None
+            ):
+                fn(node)
+        for edge in self.iter_edges():
+            if edge.readable_label is None:
+                fn(edge)
+        return self
 
     def draw(
         self,
