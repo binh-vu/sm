@@ -1,13 +1,6 @@
-from collections.abc import Sequence
-import ray
-from typing import (
-    TypeVar,
-    Union,
-    Callable,
-    List,
-    Optional,
-)
+from typing import Callable, List, Optional, Sequence, TypeVar
 
+import ray
 from loguru import logger
 from tqdm.auto import tqdm
 
