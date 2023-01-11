@@ -34,6 +34,12 @@ class CacheMethod:
         return (id(args[0]), id(args[1]), id(args[2]))
 
     @staticmethod
+    def auto_object_args(args, _kwargs):
+        return tuple(
+            x if isinstance(x, (str, int, bool)) else id(x) for x in args
+        )
+
+    @staticmethod
     def as_is_posargs(args, _kwargs):
         return args
 

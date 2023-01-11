@@ -13,11 +13,24 @@ from tqdm.auto import tqdm
 
 R = TypeVar("R")
 OBJECTS = {}
+ray_initargs: dict = {}
+
+
+def set_ray_init_args(**kwargs):
+    global ray_initargs
+    ray_initargs = kwargs
 
 
 def ray_init(**kwargs):
     if not ray.is_initialized():
+        logger.info("Initialize ray with args: {}", kwargs)
         ray.init(**kwargs)
+
+
+def ray_put(val: R) -> "ray.ObjectRef[R]":
+    global ray_initargs
+    ray_init(**ray_initargs)
+    return ray.put(val)
 
 
 def ray_map(
@@ -28,6 +41,9 @@ def ray_map(
     concurrent_submissions: int = 3000,
     desc: Optional[str] = None,
 ) -> List[R]:
+    global ray_initargs
+    ray_init(**ray_initargs)
+
     n_jobs = len(args_lst)
 
     with tqdm(total=n_jobs, desc=desc, disable=not verbose) as pbar:

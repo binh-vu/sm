@@ -39,7 +39,7 @@ class Matrix(Generic[T]):
             raise ValueError("Matrix is not rectangular")
         return nrows, ncols.pop()
 
-    def clone(self):
+    def shallow_copy(self):
         return Matrix([row.copy() for row in self.data])
 
     def deep_copy(self):
