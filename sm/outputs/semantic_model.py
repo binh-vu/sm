@@ -202,6 +202,14 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
             self.value2id[node.value] = node_id
         return node_id
 
+    def remove_node(self, node_id: int):
+        node = self._graph.get_node_data(node_id)
+        if isinstance(node, DataNode):
+            self.column2id[node.col_index] = -1
+        elif isinstance(node, LiteralNode):
+            del self.value2id[node.value]
+        return super().remove_node(node_id)
+
     def get_semantic_types_of_column(self, col_index: int) -> List[SemanticType]:
         dnode = self.get_data_node(col_index)
         sem_types = set()
