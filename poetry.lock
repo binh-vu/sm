@@ -994,7 +994,7 @@ python-versions = "*"
 
 [[package]]
 name = "timer4"
-version = "1.0.2"
+version = "1.0.4"
 description = "Timing Python code made easy"
 category = "main"
 optional = false
@@ -1133,7 +1133,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "810d9c7cfb1ba6ff455de9f5b6f196bd4389bccebb3f353d806d4ce9b85d3efd"
+content-hash = "a8eef464838c34846c4cc1027583cc34c15577c81c6b51ff6c88d866052c9a17"
 
 [metadata.files]
 aiosignal = [
@@ -2144,8 +2144,8 @@ text-unidecode = [
     {file = "text_unidecode-1.3-py2.py3-none-any.whl", hash = "sha256:1311f10e8b895935241623731c2ba64f4c455287888b18189350b67134a822e8"},
 ]
 timer4 = [
-    {file = "timer4-1.0.2-py3-none-any.whl", hash = "sha256:50a2c34e8adb3d8d1ef9fa0ac2ac65edbef26f3feb7e320d18eca574f84e9e83"},
-    {file = "timer4-1.0.2.tar.gz", hash = "sha256:74ef56c6d9bc522b1ecf21516c912b28abcba7d8e52f25cefa3afbf6c1d6a328"},
+    {file = "timer4-1.0.4-py3-none-any.whl", hash = "sha256:79c828cc7bb2c55869f6deaa25adf5adc2529b1c2a4bfe3b43221bae69a32282"},
+    {file = "timer4-1.0.4.tar.gz", hash = "sha256:ce9ac038b01895c0531574c6cd0872813786b2f795846856d4114201fef3b35b"},
 ]
 tomli = [
     {file = "tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc"},
