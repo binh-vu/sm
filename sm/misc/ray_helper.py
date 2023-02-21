@@ -93,10 +93,10 @@ def enhance_error_info(msg: Callable[..., str]):
         def fn(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except Exception as e:
+            except BaseException as e:
                 raise Exception(
                     f"Failed to run {func_name} with {msg(*args, **kwargs)}"
-                )
+                ) from e
 
         return fn
 
