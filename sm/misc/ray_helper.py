@@ -1,4 +1,5 @@
-from typing import Callable, List, Optional, Sequence, TypeVar
+import functools
+from typing import Callable, List, Optional, Sequence, TypeVar, Union
 
 import ray
 from loguru import logger
@@ -33,8 +34,24 @@ def ray_map(
     poll_interval: float = 0.1,
     concurrent_submissions: int = 3000,
     desc: Optional[str] = None,
+    debug: bool = False,
 ) -> List[R]:
     global ray_initargs
+
+    if debug:
+        # run in debug mode
+        fn = remote_fn.__wrapped__
+        output = []
+        for arg in tqdm(args_lst, desc=desc, disable=not verbose):
+            newarg = []
+            for x in arg:
+                if isinstance(x, ray.ObjectRef):
+                    newarg.append(ray.get(x))
+                else:
+                    newarg.append(x)
+            output.append(fn(*newarg))
+        return output
+
     ray_init(**ray_initargs)
 
     n_jobs = len(args_lst)
@@ -66,6 +83,24 @@ def ray_map(
                 output[ref2index[ref]] = ray.get(ref)
 
         return output
+
+
+def enhance_error_info(msg: Callable[..., str]):
+    def wrap_func(func):
+        func_name = func.__name__
+
+        @functools.wraps(func)
+        def fn(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                raise Exception(
+                    f"Failed to run {func_name} with {msg(*args, **kwargs)}"
+                )
+
+        return fn
+
+    return wrap_func
 
 
 def get_instance(constructor: Callable[[], R], name: Optional[str] = None) -> R:
