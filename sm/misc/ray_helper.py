@@ -1,5 +1,15 @@
 import functools
-from typing import Callable, List, Optional, Sequence, TypeVar, Union
+from typing import (
+    Callable,
+    List,
+    Literal,
+    Optional,
+    Sequence,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 import ray
 from loguru import logger
@@ -21,26 +31,47 @@ def ray_init(**kwargs):
         ray.init(**kwargs)
 
 
-def ray_put(val: R) -> "ray.ObjectRef[R]":
+@overload
+def ray_put(val: R, using_ray: Literal[True] = True) -> "ray.ObjectRef[R]":
+    ...
+
+
+@overload
+def ray_put(val: R, using_ray: Literal[False]) -> R:
+    ...
+
+
+@overload
+def ray_put(val: R, using_ray: bool) -> Union["ray.ObjectRef[R]", R]:
+    ...
+
+
+def ray_put(val: R, using_ray: bool = True) -> Union["ray.ObjectRef[R]", R]:
     global ray_initargs
+    if not using_ray:
+        return val
     ray_init(**ray_initargs)
     return ray.put(val)
 
 
 def ray_map(
-    remote_fn: Callable[..., "ray.ObjectRef[R]"],
+    fn: Union[Callable[..., "ray.ObjectRef[R]"], Callable[..., R]],
     args_lst: Sequence[Sequence],
     verbose: bool = False,
     poll_interval: float = 0.1,
     concurrent_submissions: int = 3000,
     desc: Optional[str] = None,
-    debug: bool = False,
+    using_ray: bool = True,
+    is_func_remote: bool = True,
 ) -> List[R]:
     global ray_initargs
 
-    if debug:
-        # run in debug mode
-        fn = remote_fn.__wrapped__
+    if not using_ray:
+        # run locally without ray, usually for debugging
+        if is_func_remote:
+            localfn: Callable[..., R] = fn.__wrapped__
+        else:
+            localfn = cast(Callable[..., R], fn)
         output = []
         for arg in tqdm(args_lst, desc=desc, disable=not verbose):
             newarg = []
@@ -49,12 +80,17 @@ def ray_map(
                     newarg.append(ray.get(x))
                 else:
                     newarg.append(x)
-            output.append(fn(*newarg))
+            output.append(localfn(*newarg))
         return output
 
     ray_init(**ray_initargs)
 
     n_jobs = len(args_lst)
+
+    if is_func_remote:
+        remote_fn = cast(Callable[..., "ray.ObjectRef[R]"], fn)
+    else:
+        remote_fn: Callable[..., "ray.ObjectRef[R]"] = ray.remote(fn).remote  # type: ignore
 
     with tqdm(total=n_jobs, desc=desc, disable=not verbose) as pbar:
         output: List[R] = [None] * n_jobs  # type: ignore
