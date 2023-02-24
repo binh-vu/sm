@@ -8,11 +8,35 @@ from tqdm import tqdm
 ItemParents = Dict[str, Iterable[str]]
 
 
-@dataclass
 class HierarchyScoringFn(ScoringFn):
-    # mapping from the item to its parents and their distances
-    # 1 is direct parent, 2 is grandparent, etc.
-    item2parents: Mapping[str, Mapping[str, int]]
+    def __init__(
+        self,
+        item2parents: Mapping[str, Mapping[str, int]],
+        max_ancestor_distance: int = 5,
+        max_descendant_distance: int = 3,
+    ):
+        """ """
+        # mapping from the item to its parents and their distances
+        # 1 is direct parent, 2 is grandparent, etc.
+        self.item2parents: Mapping[str, Mapping[str, int]] = item2parents
+        self.max_ancestor_distance = max_ancestor_distance
+        self.max_descendant_distance = max_descendant_distance
+
+    def get_match_score(self, pred_item: str, target_item: str):
+        if pred_item == target_item:
+            return 1.0
+        if pred_item in self.item2parents[target_item]:
+            # pred_predicate is the parent of the target
+            distance = self.item2parents[target_item][pred_item]
+            if distance > self.max_ancestor_distance:
+                return 0.0
+            return math.pow(0.8, distance)
+        if target_item in self.item2parents[pred_item]:
+            distance = self.item2parents[pred_item][target_item]
+            if distance > self.max_descendant_distance:
+                return 0.0
+            return math.pow(0.7, distance)
+        return 0.0
 
     @staticmethod
     def construct(
@@ -57,19 +81,3 @@ class HierarchyScoringFn(ScoringFn):
                 for k, v in item2parents.items()
             }
         )
-
-    def get_match_score(self, pred_item: str, target_item: str):
-        if pred_item == target_item:
-            return 1.0
-        if pred_item in self.item2parents[target_item]:
-            # pred_predicate is the parent of the target
-            distance = self.item2parents[target_item][pred_item]
-            if distance > 5:
-                return 0.0
-            return math.pow(0.8, distance)
-        if target_item in self.item2parents[pred_item]:
-            distance = self.item2parents[pred_item][target_item]
-            if distance > 3:
-                return 0.0
-            return math.pow(0.7, distance)
-        return 0.0
