@@ -5,10 +5,21 @@ import math
 import os
 from dataclasses import dataclass
 from itertools import permutations, chain
-from typing import Dict, Tuple, List, Set, Optional, Callable, Generator, TYPE_CHECKING
+from typing import (
+    Dict,
+    Sequence,
+    Tuple,
+    List,
+    Set,
+    Optional,
+    Callable,
+    Generator,
+    TYPE_CHECKING,
+)
 
 from loguru import logger
 from pyrsistent import pvector, PVector
+from sm.evaluation.utils import PrecisionRecallF1
 
 from sm.outputs.semantic_model import (
     SemanticModel,
@@ -176,7 +187,7 @@ class PartialBijection(object):
 
     @staticmethod
     def construct_from_mapping(
-        mapping: List[Tuple[Optional[int], Optional[int]]]
+        mapping: Sequence[Tuple[Optional[int], Optional[int]]]
     ) -> "PartialBijection":
         """
         :param mapping: a list of map from x' => x
@@ -237,10 +248,7 @@ class ScoringFn:
 
 
 @dataclass
-class PrecisionRecallF1Output:
-    precision: float
-    recall: float
-    f1: float
+class SmPrecisionRecallF1Output(PrecisionRecallF1):
     bijection: PartialBijection
     n_corrects: float  # float as we allow for partial correctness
     n_examples: int
@@ -591,7 +599,7 @@ def precision_recall_f1(
     pred_sm: "SemanticModel",
     scoring_fn: Optional[ScoringFn] = None,
     debug_dir: Optional[str] = None,
-) -> PrecisionRecallF1Output:
+) -> SmPrecisionRecallF1Output:
     if scoring_fn is None:
         scoring_fn = ScoringFn()
     pair_groups: List[PairLabelGroup] = prepare_args(gold_sm, pred_sm)
@@ -667,7 +675,7 @@ def precision_recall_f1(
     else:
         f1 = 2 * precision * recall / (precision + recall)
 
-    return PrecisionRecallF1Output(
+    return SmPrecisionRecallF1Output(
         f1=f1,
         precision=precision,
         recall=recall,

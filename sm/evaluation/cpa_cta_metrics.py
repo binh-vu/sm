@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Set, Optional, Dict
 
 from sm.evaluation import sm_metrics
+from sm.evaluation.utils import PrecisionRecallF1
 
 from sm.outputs.semantic_model import SemanticModel, DataNode
 from sm.evaluation.transformation import SemModelTransformation
@@ -9,11 +10,7 @@ from sm.outputs.semantic_model import ClassNode
 
 
 @dataclass
-class CTAEvalOutput:
-    precision: float
-    recall: float
-    f1: float
-
+class CTAEvalOutput(PrecisionRecallF1):
     n_corrects: float  # float as we allow for partial correctness
     n_examples: int
     n_predictions: int
@@ -24,7 +21,7 @@ def cpa(
     pred_sm: SemanticModel,
     id_props: Set[str],
     scoring_fn: Optional[sm_metrics.ScoringFn] = None,
-) -> sm_metrics.PrecisionRecallF1Output:
+) -> sm_metrics.SmPrecisionRecallF1Output:
     gold_sm = gold_sm.deep_copy()
     pred_sm = pred_sm.deep_copy()
 
