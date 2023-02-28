@@ -121,15 +121,20 @@ class Dataset:
                 example_id = infile.name[: -sum(len(x) for x in suffixes)]
                 table = json.deser(infile, FullTable)
 
-                if (descdir / example_id).exists():
-                    desc_file = get_latest_path(descdir / f"{example_id}/version.json")
-                    assert desc_file is not None
-                else:
-                    desc_file = descdir / f"{example_id}.json"
-                    assert desc_file.exists()
+                if descdir.exists():
+                    if (descdir / example_id).exists():
+                        desc_file = get_latest_path(
+                            descdir / f"{example_id}/version.json"
+                        )
+                        assert desc_file is not None
+                    else:
+                        desc_file = descdir / f"{example_id}.json"
+                        assert desc_file.exists()
 
-                raw_sms = json.deser(desc_file)
-                sms = [SemanticModel.from_dict(sm) for sm in raw_sms]
+                    raw_sms = json.deser(desc_file)
+                    sms = [SemanticModel.from_dict(sm) for sm in raw_sms]
+                else:
+                    sms = []
 
                 examples.append(Example(sms=sms, table=table))
             elif infile.name.endswith(".zip"):
@@ -145,21 +150,23 @@ class Dataset:
                             table = FullTable.from_dict(orjson.loads(f.read()))
                         part[table_id] = table
 
-                lst = []
-                with ZipFile(descdir / infile.name, mode="r") as zf:
-                    for file in zf.infolist():
-                        table_id = Path(file.filename).stem
-                        if table_id not in part:
-                            continue
+                if descdir.exists():
+                    lst = []
+                    with ZipFile(descdir / infile.name, mode="r") as zf:
+                        for file in zf.infolist():
+                            table_id = Path(file.filename).stem
+                            if table_id not in part:
+                                continue
 
-                        assert file.filename.endswith(".json")
-                        with zf.open(file, mode="r") as f:
-                            sms = [
-                                SemanticModel.from_dict(sm)
-                                for sm in orjson.loads(f.read())
-                            ]
-                            lst.append(Example(sms=sms, table=part[table_id]))
-
+                            assert file.filename.endswith(".json")
+                            with zf.open(file, mode="r") as f:
+                                sms = [
+                                    SemanticModel.from_dict(sm)
+                                    for sm in orjson.loads(f.read())
+                                ]
+                                lst.append(Example(sms=sms, table=part[table_id]))
+                else:
+                    lst = [Example(sms=[], table=table) for table in part.values()]
                 assert len(lst) == len(part)
                 examples.extend(lst)
 

@@ -1,4 +1,5 @@
 import functools
+import sys
 from typing import (
     Callable,
     List,
@@ -121,7 +122,31 @@ def ray_map(
         return output
 
 
-def enhance_error_info(msg: Callable[..., str]):
+def enhance_error_info(msg: Union[Callable[..., str], str]):
+    """Enhancing error report by printing out tracable id of the input arguments.
+
+    Args:
+        msg: a function that takes the same arguments as the wrapped function and return a tracable id.
+            If msg is a string, it is a list of accessors joined by dot. Each accessor is either a number
+            (to call __getitem__) or a string (to call __getattr__). The first accessor is always the number
+            which is the argument index that will be used to extract the traceable id from. For example: 0.table.table_id
+    """
+
+    if isinstance(msg, str):
+
+        def msg_fn(*args, **kwargs):
+            assert len(kwargs) == 0
+            ptr = args
+            for accessor in msg.split("."):
+                if accessor.isdigit():
+                    ptr = ptr[int(accessor)]
+                else:
+                    ptr = getattr(ptr, accessor)
+            return ptr
+
+    else:
+        msg_fn = msg
+
     def wrap_func(func):
         func_name = func.__name__
 
@@ -130,9 +155,16 @@ def enhance_error_info(msg: Callable[..., str]):
             try:
                 return func(*args, **kwargs)
             except BaseException as e:
-                raise Exception(
-                    f"Failed to run {func_name} with {msg(*args, **kwargs)}"
-                ) from e
+                if hasattr(sys, "gettrace") and sys.gettrace() is not None:
+                    # for debug mode in vscode...
+                    logger.error(
+                        f"Failed to run {func_name} with {msg_fn(*args, **kwargs)}"
+                    )
+                    raise
+                else:
+                    raise Exception(
+                        f"Failed to run {func_name} with {msg_fn(*args, **kwargs)}"
+                    ) from e
 
         return fn
 

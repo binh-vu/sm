@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
-from rsoup.python.models.context import ContentHierarchy
+from rsoup.rsoup import ContentHierarchy
 from sm.inputs.link import EntityId
 
 
