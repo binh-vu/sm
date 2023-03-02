@@ -107,3 +107,8 @@ class KnowledgeGraphNamespace(ABC, Namespace):
     @abstractmethod
     def get_entity_rel_uri(self, iid: str) -> str:
         ...
+
+    @classmethod
+    @abstractmethod
+    def get_prop_id(cls, uri: str) -> str:
+        ...
