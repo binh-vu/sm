@@ -72,6 +72,12 @@ class Matrix(Generic[T]):
             return [row[item[1]] for row in self.data[item[0]]]  # type: ignore
         return self.data[item[0]][item[1]]
 
+    def get(self, key: Tuple[int, int], default: T) -> T:
+        try:
+            return self[key]
+        except IndexError:
+            return default
+
     def __setitem__(self, key: Tuple[int, int], value: T):
         self.data[key[0]][key[1]] = value
 
