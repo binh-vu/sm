@@ -3,6 +3,13 @@ from typing import List, Optional
 
 
 class EntityId(str):
+    """Represent an entity id in a knowledge graph. Note that identifiers in knowledge graphs are supposed to disjoint and the type is just
+    to indicate explicitly which knowledge graph the entity belongs to.
+
+    Otherwise, the following code `entities[entid]` where `entid = EntityId('Q5', WIKIDATA)` does not sound as another entity of same id but in different
+    KG will return the same result.
+    """
+
     __slots__ = ("type",)
     type: str
 
@@ -84,3 +91,12 @@ class Link:
                 else [],
             )
         raise ValueError(f"Unknown version: {version}")
+
+    def __eq__(self, other: Link):
+        return (
+            isinstance(other, Link)
+            and self.start == other.start
+            and self.end == other.end
+            and self.url == other.url
+            and self.entities == other.entities
+        )
