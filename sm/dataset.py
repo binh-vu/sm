@@ -1,18 +1,22 @@
+import shutil
+from contextlib import contextmanager
 from dataclasses import dataclass
+from hashlib import md5
+from operator import attrgetter
 from pathlib import Path
+from typing import Callable, Generator, Generic, List, Literal, Optional, TypeVar, Union
+from urllib.parse import urlparse
+from zipfile import Path as ZipPath
 from zipfile import ZipFile
-from typing import List, Literal, Optional, TypeVar, Generic, Union, Callable
-import orjson
 
+import orjson
+from serde import json
+from slugify import slugify
+
+from sm.inputs.prelude import ColumnBasedTable, Context, Link
 from sm.misc.funcs import batch, get_latest_path
 from sm.misc.matrix import Matrix
 from sm.outputs.semantic_model import SemanticModel
-from sm.inputs.prelude import ColumnBasedTable, Context, Link
-from slugify import slugify
-from serde import json
-import shutil
-from urllib.parse import urlparse
-from hashlib import md5
 
 T = TypeVar("T", covariant=True)
 
@@ -69,13 +73,31 @@ class FullTable:
 class Dataset:
     location: Path
 
-    @property
-    def description_dir(self) -> Path:
-        return self.location / "descriptions"
+    @contextmanager
+    def _open(self) -> Generator[Union[ZipPath, Path], None, None]:
+        if self.is_zip_file():
+            # it is a zip file
+            with ZipFile(self.location, mode="r") as zf:
+                root = ZipPath(zf)
+                if self.description_dir(root).exists():
+                    yield root
 
-    @property
-    def table_dir(self) -> Path:
-        return self.location / "tables"
+                subdirs = list(root.iterdir())
+                if len(subdirs) == 1 and self.description_dir(subdirs[0]).exists():
+                    yield subdirs[0]
+                else:
+                    raise ValueError("Invalid dataset format")
+        else:
+            yield self.location
+
+    def description_dir(self, root: Union[Path, ZipPath]) -> Union[Path, ZipPath]:
+        return root / "descriptions"
+
+    def table_dir(self, root: Union[Path, ZipPath]) -> Union[Path, ZipPath]:
+        return root / "tables"
+
+    def is_zip_file(self):
+        return self.location.name.endswith(".zip")
 
     def load(self) -> List[Example[FullTable]]:
         """Load dataset from a folder. Assuming the following structure:
@@ -106,71 +128,76 @@ class Dataset:
             data_dir:
 
         Returns:
-
         """
-        descdir = self.description_dir
-        tabledir = self.table_dir
-
         examples = []
-        for infile in sorted(tabledir.iterdir()):
-            suffixes = infile.suffixes
-            if infile.name.startswith(".") or len(suffixes) == 0:
-                continue
+        with self._open() as root:
+            descdir = self.description_dir(root)
+            tabledir = self.table_dir(root)
 
-            if suffixes[0] == ".json":
-                example_id = infile.name[: -sum(len(x) for x in suffixes)]
-                table = json.deser(infile, FullTable)
+            for infile in sorted(tabledir.iterdir(), key=attrgetter("name")):
+                suffixes = Path(infile.name).suffixes
+                if infile.name.startswith(".") or len(suffixes) == 0:
+                    continue
 
-                if descdir.exists():
-                    if (descdir / example_id).exists():
-                        desc_file = get_latest_path(
-                            descdir / f"{example_id}/version.json"
-                        )
-                        assert desc_file is not None
+                if suffixes[0] == ".json":
+                    example_id = infile.name[: -sum(len(x) for x in suffixes)]
+                    table = FullTable.from_dict(orjson.loads(infile.read_bytes()))
+
+                    if descdir.exists():
+                        if (descdir / example_id).exists():
+                            desc_file = max(
+                                (descdir / example_id).iterdir(),
+                                key=lambda file: int(file.name.split(".")[1]),
+                            )
+                            assert desc_file is not None
+                        else:
+                            desc_file = descdir / f"{example_id}.json"
+                            assert desc_file.exists()
+
+                        raw_sms = orjson.loads(desc_file.read_bytes())
+                        sms = [SemanticModel.from_dict(sm) for sm in raw_sms]
                     else:
-                        desc_file = descdir / f"{example_id}.json"
-                        assert desc_file.exists()
+                        sms = []
 
-                    raw_sms = json.deser(desc_file)
-                    sms = [SemanticModel.from_dict(sm) for sm in raw_sms]
-                else:
-                    sms = []
-
-                examples.append(Example(sms=sms, table=table))
-            elif infile.name.endswith(".zip"):
-
-                part = {}
-                with ZipFile(infile, mode="r") as zf:
-                    for file in zf.infolist():
-                        if not file.filename.endswith(".json"):
-                            continue
-
-                        table_id = Path(file.filename).stem
-                        with zf.open(file, mode="r") as f:
-                            table = FullTable.from_dict(orjson.loads(f.read()))
-                        part[table_id] = table
-
-                if descdir.exists():
-                    lst = []
-                    with ZipFile(descdir / infile.name, mode="r") as zf:
+                    examples.append(Example(sms=sms, table=table))
+                elif infile.name.endswith(".zip"):
+                    assert (
+                        isinstance(infile, Path)
+                        and isinstance(descdir, Path)
+                        and not self.is_zip_file()
+                    ), "Must not be a zip file"
+                    part = {}
+                    with ZipFile(infile, mode="r") as zf:
                         for file in zf.infolist():
-                            table_id = Path(file.filename).stem
-                            if table_id not in part:
+                            if not file.filename.endswith(".json"):
                                 continue
 
-                            assert file.filename.endswith(".json")
+                            table_id = Path(file.filename).stem
                             with zf.open(file, mode="r") as f:
-                                sms = [
-                                    SemanticModel.from_dict(sm)
-                                    for sm in orjson.loads(f.read())
-                                ]
-                                lst.append(Example(sms=sms, table=part[table_id]))
-                else:
-                    lst = [Example(sms=[], table=table) for table in part.values()]
-                assert len(lst) == len(part)
-                examples.extend(lst)
+                                table = FullTable.from_dict(orjson.loads(f.read()))
+                            part[table_id] = table
 
-        return examples
+                    if descdir.exists():
+                        lst = []
+                        with ZipFile(descdir / infile.name, mode="r") as zf:
+                            for file in zf.infolist():
+                                table_id = Path(file.filename).stem
+                                if table_id not in part:
+                                    continue
+
+                                assert file.filename.endswith(".json")
+                                with zf.open(file, mode="r") as f:
+                                    sms = [
+                                        SemanticModel.from_dict(sm)
+                                        for sm in orjson.loads(f.read())
+                                    ]
+                                    lst.append(Example(sms=sms, table=part[table_id]))
+                    else:
+                        lst = [Example(sms=[], table=table) for table in part.values()]
+                    assert len(lst) == len(part)
+                    examples.extend(lst)
+
+            return examples
 
     def save(
         self,
@@ -181,12 +208,18 @@ class Dataset:
         table_fmt_indent: Literal[0, 2] = 0,
         clean_previous_data: bool = True,
     ):
-        descdir = self.description_dir
+        descdir = self.description_dir(self.location)
+        tabledir = self.table_dir(self.location)
+        assert (
+            not self.is_zip_file()
+            and isinstance(descdir, Path)
+            and isinstance(tabledir, Path)
+        )
+
         if descdir.exists() and clean_previous_data:
             shutil.rmtree(descdir)
         descdir.mkdir(parents=True, exist_ok=True)
 
-        tabledir = self.table_dir
         if tabledir.exists() and clean_previous_data:
             shutil.rmtree(tabledir)
         tabledir.mkdir(parents=True, exist_ok=True)
