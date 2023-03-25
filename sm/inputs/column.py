@@ -19,10 +19,33 @@ class Column:
 
     @functools.cached_property
     def clean_name(self) -> Optional[str]:
-        """Clean the name that may contain many unncessary spaces"""
+        """Clean the name that may contain many unncessary spaces."""
         if self.name is None:
             return None
+
         return re.sub(r"\s+", " ", self.name).strip()
+
+    @functools.cached_property
+    def clean_multiline_name(self) -> Optional[str]:
+        """Clean the name that may contain many unncessary spaces. However, this function keeps the newlines intact."""
+        if self.name is None:
+            return None
+
+        key = None
+        for k in ["##", "###", "#@#"]:
+            if k not in self.name:
+                key = k
+                break
+        assert key is not None, "Cannot find a key to replace newlines"
+        s = re.sub(r"\n+", key, self.name)  # replace newlines with key
+        s = re.sub(r"\s+", " ", s).strip()  # replace multiple spaces with one space
+        s = re.sub(
+            f" *{key} *", "\n", s
+        )  # replace key with surrounded spaces with newline
+        s = re.sub(
+            f"\n+", "\n", s
+        )  # replace multiple consecutive newlines with a single newline
+        return s
 
     def __getitem__(self, item):
         return self.values[item]

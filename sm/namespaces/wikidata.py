@@ -14,6 +14,9 @@ class WikidataNamespace(KnowledgeGraphNamespace):
 
     __slots__ = ("entity_prefix", "property_prefix")
 
+    ENTITY_ID = (
+        "Q35120"  # the root entity of Wikidata, any other class is a subclass of this
+    )
     STATEMENT_URI = (
         "http://wikiba.se/ontology#Statement"  # statement to represent n-ary relations
     )
