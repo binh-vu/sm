@@ -1,6 +1,7 @@
 from __future__ import annotations
-from typing import Protocol, Sequence
+
 from dataclasses import dataclass
+from typing import Protocol, Sequence
 
 
 class PrecisionRecallF1Protocol(Protocol):

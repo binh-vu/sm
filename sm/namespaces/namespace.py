@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Optional
 
 import serde.yaml
 
@@ -58,9 +59,11 @@ class Namespace:
         """Check if an URI is relative."""
         return uri.count(":") == 1
 
-    def is_uri_in_ns(self, abs_uri: str, prefix: str):
+    def is_uri_in_ns(self, abs_uri: str, prefix: Optional[str] = None):
         """Check if an absolute URI is in a namespace specified by the prefix."""
-        return abs_uri.startswith(self.prefix2ns[prefix])
+        if prefix is not None:
+            return abs_uri.startswith(self.prefix2ns[prefix])
+        return any(abs_uri.startswith(ns) for ns in self.prefix2ns.values())
 
     def get_resource_id(self, abs_uri: str):
         """
