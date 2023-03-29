@@ -6,6 +6,7 @@ from typing import (
     Literal,
     Optional,
     Sequence,
+    Type,
     TypeVar,
     Union,
     cast,
@@ -64,6 +65,7 @@ def ray_map(
     desc: Optional[str] = None,
     using_ray: bool = True,
     is_func_remote: bool = True,
+    remote_options: Optional[dict] = None,
 ) -> List[R]:
     global ray_initargs
 
@@ -91,7 +93,11 @@ def ray_map(
     if is_func_remote:
         remote_fn = cast(Callable[..., "ray.ObjectRef[R]"], fn)
     else:
-        remote_fn: Callable[..., "ray.ObjectRef[R]"] = ray.remote(fn).remote  # type: ignore
+        if remote_options is None:
+            wrapper = ray.remote
+        else:
+            wrapper = ray.remote(**remote_options)
+        remote_fn: Callable[..., "ray.ObjectRef[R]"] = wrapper(fn).remote  # type: ignore
 
     with tqdm(total=n_jobs, desc=desc, disable=not verbose) as pbar:
         output: List[R] = [None] * n_jobs  # type: ignore
@@ -101,6 +107,83 @@ def ray_map(
         for i, args in enumerate(args_lst):
             # submit a task and add it to not ready queue and ref2index
             ref = remote_fn(*args)
+            notready_refs.append(ref)
+            ref2index[ref] = i
+
+            # when the not ready queue is full, wait for some tasks to finish
+            while len(notready_refs) >= concurrent_submissions:
+                ready_refs, notready_refs = ray.wait(
+                    notready_refs, timeout=poll_interval
+                )
+                pbar.update(len(ready_refs))
+                for ref in ready_refs:
+                    output[ref2index[ref]] = ray.get(ref)
+
+        while len(notready_refs) > 0:
+            ready_refs, notready_refs = ray.wait(notready_refs, timeout=poll_interval)
+            pbar.update(len(ready_refs))
+            for ref in ready_refs:
+                output[ref2index[ref]] = ray.get(ref)
+
+        return output
+
+
+def ray_actor_map(
+    actor_class: Type,
+    actor_fn: str,
+    actor_args_lst: Sequence[Sequence],
+    args_lst: Sequence[Sequence],
+    verbose: bool = False,
+    poll_interval: float = 0.1,
+    concurrent_submissions: int = 3000,
+    desc: Optional[str] = None,
+    using_ray: bool = True,
+    is_actor_remote: bool = True,
+    remote_options: Optional[dict] = None,
+):
+    global ray_initargs
+
+    if not using_ray:
+        # assert all actors are local
+        assert (
+            not is_actor_remote
+        ), "If you want to run it locally, do not wrap the actor class with ray.remote"
+        actors = [actor_class(*args) for args in actor_args_lst]
+        actor_fns = [getattr(actor, actor_fn) for actor in actors]
+
+        output = []
+        i = 0
+        for arg in tqdm(args_lst, desc=desc, disable=not verbose):
+            newarg = []
+            for x in arg:
+                if isinstance(x, ray.ObjectRef):
+                    newarg.append(ray.get(x))
+                else:
+                    newarg.append(x)
+            output.append(actor_fns[i % len(actors)](*newarg))
+            i += 1
+        return output
+
+    ray_init(**ray_initargs)
+
+    if not is_actor_remote:
+        if remote_options is None:
+            actor_class = ray.remote(actor_class)
+        else:
+            actor_class = ray.remote(**remote_options)(actor_class)
+
+    actors = [actor_class.remote(*args) for args in actor_args_lst]
+    actor_fns = [getattr(actor, actor_fn).remote for actor in actors]
+
+    n_jobs = len(args_lst)
+    with tqdm(total=n_jobs, desc=desc, disable=not verbose) as pbar:
+        output: List[R] = [None] * n_jobs  # type: ignore
+
+        notready_refs = []
+        ref2index = {}
+        for i, args in enumerate(args_lst):
+            # submit a task and add it to not ready queue and ref2index
+            ref = actor_fns[i % len(actors)](*args)
             notready_refs.append(ref)
             ref2index[ref] = i
 
