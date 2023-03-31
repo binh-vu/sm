@@ -18,6 +18,7 @@ from typing import (
     List,
     Optional,
     KeysView,
+    Iterable,
 )
 
 from loguru import logger
@@ -57,17 +58,31 @@ def percentage(a: Union[float, int], b: Union[float, int]) -> str:
     return "%.2f%% (%d/%d)" % (a * 100 / b, a, b)
 
 
-def filter_duplication(lst: List[Any], key_fn: Optional[Callable[[Any], Any]] = None):
-    key_fn = key_fn or identity_func
+def is_non_decreasing_sequence(
+    lst: Union[list[Union[int, float]], list[int], list[float]]
+) -> bool:
+    return len(lst) == 0 or (all(lst[i - 1] <= lst[i] for i in range(1, len(lst))))
+
+
+def filter_duplication(
+    lst: Iterable[V], key_fn: Optional[Callable[[V], Any]] = None
+) -> List[V]:
     keys = set()
     new_lst = []
-    for item in lst:
-        k = key_fn(item)
-        if k in keys:
-            continue
+    if key_fn is not None:
+        for item in lst:
+            k = key_fn(item)
+            if k in keys:
+                continue
 
-        keys.add(k)
-        new_lst.append(item)
+            keys.add(k)
+            new_lst.append(item)
+    else:
+        for k in lst:
+            if k in keys:
+                continue
+            keys.add(k)
+            new_lst.append(k)
     return new_lst
 
 
