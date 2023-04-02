@@ -1,5 +1,8 @@
 import functools
+from pathlib import Path
+import sqlite3
 import sys
+import time
 from typing import (
     Callable,
     List,
@@ -205,22 +208,22 @@ def ray_actor_map(
         return output
 
 
-def enhance_error_info(msg: Union[Callable[..., str], str]):
+def enhance_error_info(getid: Union[Callable[..., str], str]):
     """Enhancing error report by printing out tracable id of the input arguments.
 
     Args:
-        msg: a function that takes the same arguments as the wrapped function and return a tracable id.
+        getid: a function that takes the same arguments as the wrapped function and return a tracable id.
             If msg is a string, it is a list of accessors joined by dot. Each accessor is either a number
             (to call __getitem__) or a string (to call __getattr__). The first accessor is always the number
             which is the argument index that will be used to extract the traceable id from. For example: 0.table.table_id
     """
 
-    if isinstance(msg, str):
+    if isinstance(getid, str):
 
-        def msg_fn(*args, **kwargs):
+        def get_id_fn(*args, **kwargs):
             assert len(kwargs) == 0
             ptr = args
-            for accessor in msg.split("."):
+            for accessor in getid.split("."):
                 if accessor.isdigit():
                     ptr = ptr[int(accessor)]
                 else:
@@ -228,7 +231,7 @@ def enhance_error_info(msg: Union[Callable[..., str], str]):
             return ptr
 
     else:
-        msg_fn = msg
+        get_id_fn = getid
 
     def wrap_func(func):
         func_name = func.__name__
@@ -241,13 +244,60 @@ def enhance_error_info(msg: Union[Callable[..., str], str]):
                 if hasattr(sys, "gettrace") and sys.gettrace() is not None:
                     # for debug mode in vscode...
                     logger.error(
-                        f"Failed to run {func_name} with {msg_fn(*args, **kwargs)}"
+                        f"Failed to run {func_name} with {get_id_fn(*args, **kwargs)}"
                     )
                     raise
                 else:
                     raise Exception(
-                        f"Failed to run {func_name} with {msg_fn(*args, **kwargs)}"
+                        f"Failed to run {func_name} with {get_id_fn(*args, **kwargs)}"
                     ) from e
+
+        return fn
+
+    return wrap_func
+
+
+def track_runtime(getid: Union[Callable[..., str], str], outfile: Union[str, Path]):
+    if isinstance(getid, str):
+
+        def get_id_fn(*args, **kwargs):
+            assert len(kwargs) == 0
+            ptr = args
+            for accessor in getid.split("."):
+                if accessor.isdigit():
+                    ptr = ptr[int(accessor)]
+                else:
+                    ptr = getattr(ptr, accessor)
+            return ptr
+
+    else:
+        get_id_fn = getid
+
+    init_db = not Path(outfile).exists()
+    db = sqlite3.connect(outfile)
+    if init_db:
+        with db:
+            db.execute("CREATE TABLE timesheet(func TEXT, name TEXT, time REAL)")
+
+    def wrap_func(func):
+        func_name = func.__name__
+
+        @functools.wraps(func)
+        def fn(*args, **kwargs):
+            start = time.time()
+            try:
+                return func(*args, **kwargs)
+            finally:
+                end = time.time()
+                with db:
+                    db.execute(
+                        "INSERT INTO timesheet VALUES (:func, :name, :time)",
+                        {
+                            "func": func_name,
+                            "name": get_id_fn(*args, **kwargs),
+                            "time": end - start,
+                        },
+                    )
 
         return fn
 
