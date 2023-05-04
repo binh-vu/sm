@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Set, Optional, Dict
+from typing import List, Mapping, Sequence, Set, Optional, Dict, Union
 
 from sm.evaluation import sm_metrics
 from sm.evaluation.utils import PrecisionRecallF1
@@ -50,11 +50,23 @@ def cta(
     if scoring_fn is None:
         scoring_fn = sm_metrics.ScoringFn()
 
+    return _cta_real(gold_cta, pred_cta, scoring_fn)
+
+
+def _cta_real(
+    gold_cta: Mapping[str, Union[Sequence[str], Set[str], str]],
+    pred_cta: Mapping[str, str],
+    scoring_fn: sm_metrics.ScoringFn,
+):
     score = 0.0
     for cindex in set(gold_cta.keys()).intersection(pred_cta.keys()):
         gc = gold_cta[cindex]
         pc = pred_cta[cindex]
-        score += scoring_fn.get_match_score(pc, gc)
+
+        if isinstance(gc, (list, tuple, set)):
+            score += max(scoring_fn.get_match_score(pc, g) for g in gc)
+        else:
+            score += scoring_fn.get_match_score(pc, gc)
 
     if len(pred_cta) == 0:
         precision = 1.0
