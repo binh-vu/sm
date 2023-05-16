@@ -47,3 +47,19 @@ class Context:
                 ],
             )
         raise ValueError(f"Unknown version: {version}")
+
+    def __getstate__(self):
+        return {
+            "page_title": self.page_title,
+            "page_url": self.page_url,
+            "page_entities": self.page_entities,
+            "content_hierarchy": [c.to_dict() for c in self.content_hierarchy],
+        }
+
+    def __setstate__(self, state):
+        self.page_title = state["page_title"]
+        self.page_url = state["page_url"]
+        self.page_entities = state["page_entities"]
+        self.content_hierarchy = [
+            ContentHierarchy.from_dict(c) for c in state.get("content_hierarchy", [])
+        ]

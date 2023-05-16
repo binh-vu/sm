@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Optional, Protocol, Sequence, cast
 
 from sm.evaluation.sm_metrics import ScoringFn
+from sm.evaluation.utils import PrecisionRecallF1
 
 
 def precision_recall_f1(
@@ -17,7 +18,6 @@ def precision_recall_f1(
         ytrue: list of true labels per example. When there are more than one correct labels per example, we treat a prediction is correct if it is
             in the set of correct labels.
         ypreds: list of predicted labels per example, sorted by their likelihood in decreasing order.
-        k: number of predicted labels to consider. If None, we use all predicted labels (i.e., recall@all).
         scoring_fn: the function telling how well a prediction matches a true label. Exact matching is used by default, but HierachicalScoringFn (in SemTab)
             can be used as well to calculate approximate recall at k.
     """
@@ -48,7 +48,7 @@ def precision_recall_f1(
                 n_correct += 1
         else:
             assert (
-                yipred is not None
+                len(ytrue[i]) == 0 or yipred is None
             ), "To ensure that we don't count in case where there is no label and the system do not predict anything"
 
     precision = n_correct / n_predictions if n_predictions > 0 else 1.0
