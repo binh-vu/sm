@@ -1165,8 +1165,8 @@ files = [
 
 [package.dependencies]
 numpy = [
-    {version = ">=1.20.3", markers = "python_version < \"3.10\""},
     {version = ">=1.21.0", markers = "python_version >= \"3.10\""},
+    {version = ">=1.20.3", markers = "python_version < \"3.10\""},
 ]
 python-dateutil = ">=2.8.1"
 pytz = ">=2020.1"
@@ -1225,8 +1225,6 @@ category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "Pillow-9.3.0-1-cp37-cp37m-win32.whl", hash = "sha256:e6ea6b856a74d560d9326c0f5895ef8050126acfdc7ca08ad703eb0081e82b74"},
-    {file = "Pillow-9.3.0-1-cp37-cp37m-win_amd64.whl", hash = "sha256:32a44128c4bdca7f31de5be641187367fe2a450ad83b833ef78910397db491aa"},
     {file = "Pillow-9.3.0-cp310-cp310-macosx_10_10_x86_64.whl", hash = "sha256:0b7257127d646ff8676ec8a15520013a698d1fdc48bc2a79ba4e53df792526f2"},
     {file = "Pillow-9.3.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:b90f7616ea170e92820775ed47e136208e04c967271c9ef615b6fbd08d9af0e3"},
     {file = "Pillow-9.3.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:68943d632f1f9e3dce98908e873b3a090f6cba1cbb1b892a9e8d97c938871fbe"},
@@ -1637,14 +1635,14 @@ click = ">=7.0,<=8.0.4"
 filelock = "*"
 frozenlist = "*"
 grpcio = [
-    {version = ">=1.32.0,<=1.43.0", markers = "python_version < \"3.10\""},
     {version = ">=1.42.0,<=1.43.0", markers = "python_version >= \"3.10\""},
+    {version = ">=1.32.0,<=1.43.0", markers = "python_version < \"3.10\""},
 ]
 jsonschema = "*"
 msgpack = ">=1.0.0,<2.0.0"
 numpy = [
-    {version = ">=1.16", markers = "python_version < \"3.9\""},
     {version = ">=1.19.3", markers = "python_version >= \"3.9\""},
+    {version = ">=1.16", markers = "python_version < \"3.9\""},
 ]
 protobuf = ">=3.15.3,<4.0.0"
 pyyaml = "*"
@@ -1778,15 +1776,15 @@ mpl = ["matplotlib (>=3.0)"]
 
 [[package]]
 name = "rsoup"
-version = "2.5.3"
+version = "3.0.0"
 description = "A library for web scraper that handles text correctly and is very fast (Rust backend)"
 category = "main"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "rsoup-2.5.3-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d8619bec154f1ec86b1920def61b6c9bff61a9ff8f62de7a4d2bd7117d75580a"},
-    {file = "rsoup-2.5.3-cp39-cp39-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:5110b25c1237fe7a2d4dfd0cc212101812f946f3541c03a38095e46eeb3c3873"},
-    {file = "rsoup-2.5.3-cp39-none-win_amd64.whl", hash = "sha256:d8ce573109bf41f0c10ee66ec9f86dad38fdfc12b60c7803d3d5823ead9a363f"},
+    {file = "rsoup-3.0.0-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f59e2d98a06f035871394e75f11dc09a13bccecdf765c7159fc821b1fc900c69"},
+    {file = "rsoup-3.0.0-cp39-cp39-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:25acbe1a2dbd206ea3eb4c0ceb560f514ab0aa9f23cd61f6b6cf9f96c46403cc"},
+    {file = "rsoup-3.0.0-cp39-none-win_amd64.whl", hash = "sha256:00fd72cb48facc30d1f2601371b710bef16316b7b08a679eabffcabc623d020d"},
 ]
 
 [package.dependencies]
@@ -2312,4 +2310,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "4d7fb329ff0cb9b1eeffe0239dc6ad2232b19494f00616fc5fcb0eddea258e03"
+content-hash = "f7126acff997edf881193da0a86a0ecc30c1561abc5d308418416925d31e3314"
