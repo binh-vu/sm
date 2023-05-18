@@ -59,7 +59,7 @@ def percentage(a: Union[float, int], b: Union[float, int]) -> str:
 
 
 def is_non_decreasing_sequence(
-    lst: Union[list[Union[int, float]], list[int], list[float]]
+    lst: Union[List[Union[int, float]], List[int], List[float]]
 ) -> bool:
     return len(lst) == 0 or (all(lst[i - 1] <= lst[i] for i in range(1, len(lst))))
 
