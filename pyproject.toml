@@ -29,7 +29,7 @@ colorama = ">=0.4.4"
 graph-wrapper = "^1.5.0"
 rdflib = "^6.1.1"
 serde2 = {version = "^1.6.0", extras = ["all"]}
-rsoup = "^3.0.0"
+rsoup = "^3.0.1"
 Deprecated = "^1.2.13"
 ray = "^2.0.1"
 timer4 = ">= 1.0.4, < 2.0.0"

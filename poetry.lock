@@ -1776,15 +1776,21 @@ mpl = ["matplotlib (>=3.0)"]
 
 [[package]]
 name = "rsoup"
-version = "3.0.0"
+version = "3.0.1"
 description = "A library for web scraper that handles text correctly and is very fast (Rust backend)"
 category = "main"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "rsoup-3.0.0-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f59e2d98a06f035871394e75f11dc09a13bccecdf765c7159fc821b1fc900c69"},
-    {file = "rsoup-3.0.0-cp39-cp39-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:25acbe1a2dbd206ea3eb4c0ceb560f514ab0aa9f23cd61f6b6cf9f96c46403cc"},
-    {file = "rsoup-3.0.0-cp39-none-win_amd64.whl", hash = "sha256:00fd72cb48facc30d1f2601371b710bef16316b7b08a679eabffcabc623d020d"},
+    {file = "rsoup-3.0.1-cp310-cp310-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:a753f610329bf12d455447059f164026ab24847594188c7f4a7108a710a047c6"},
+    {file = "rsoup-3.0.1-cp310-cp310-manylinux_2_34_x86_64.whl", hash = "sha256:aca18e4a7779ff468851df71949ebf06d63f84d224fb4203503e49dd71bc7a90"},
+    {file = "rsoup-3.0.1-cp310-none-win_amd64.whl", hash = "sha256:635885ff611e9b0c51aa864593cdfb4aa6af9ba671e3f2d480002f91ae3b1987"},
+    {file = "rsoup-3.0.1-cp38-cp38-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:e43aa29413e26a42ad7620797054728c110a673572b465dd76e16573684f893c"},
+    {file = "rsoup-3.0.1-cp38-cp38-manylinux_2_34_x86_64.whl", hash = "sha256:66715964a67eac0bbf967287a3298fa21972aa48102675268db813c6f0eea199"},
+    {file = "rsoup-3.0.1-cp38-none-win_amd64.whl", hash = "sha256:9e6265350d9e022f8e74c707618b501d85f5cc8dc482678079df239b040bba2f"},
+    {file = "rsoup-3.0.1-cp39-cp39-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:1b7e2aeab9e625bcd8927f55d23bf1752e958085b5698c4894fd395b2be012f5"},
+    {file = "rsoup-3.0.1-cp39-cp39-manylinux_2_34_x86_64.whl", hash = "sha256:7793edd482e19eaa44aadcb004da498216b9c137e2109c97b7f4d19dca43c25b"},
+    {file = "rsoup-3.0.1-cp39-none-win_amd64.whl", hash = "sha256:d1cc3060d63e0e074f58909dd72252e1ecbf591dde6407dbfe0c3bd9a56e1b7e"},
 ]
 
 [package.dependencies]
@@ -2310,4 +2316,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "f7126acff997edf881193da0a86a0ecc30c1561abc5d308418416925d31e3314"
+content-hash = "685bcd48fd0253f2480b993debec8b259b5518c2f49f1d2b4c11fb6ce20905dd"
