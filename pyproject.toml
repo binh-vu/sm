@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sem-desc"
-version = "4.11.0"
+version = "4.11.1"
 description = "Package providing basic functionalities for the semantic modeling problem"
 authors = ["Binh Vu <binh@toan2.com>"]
 license = "MIT"
@@ -17,7 +17,7 @@ python = "^3.8"
 pandas = "^1.4.1"
 python-slugify = "^6.1.2"
 pyrsistent = "^0.17.3"
-orjson = "^3.8.2"
+orjson = ">= 3.9.0, < 4.0.0"
 loguru = "^0.6.0"
 tqdm = "^4.64.0"
 matplotlib = "^3.5.3"
