@@ -12,7 +12,11 @@ def precision_recall_f1(
     ypreds: list[Optional[str]],
     scoring_fn: Optional[ScoringFn] = None,
 ):
-    """Calculate precision, recall, and f1
+    """Calculate precision, recall, and f1. For each example, if the true label is either None or empty, it is out-of-class (e.g., dangling, nil, negative (for binary classifcation)) and the system
+    should not predict anything (if the system does, it's a false positive). If the predict label is None, it means the system predicts this is out-of-class but of course it does not get any reward for
+    that except for the fact that it does not get penalized for false positive.
+
+    Difference from sklearn.metrics.precision_recall_f1_score: this function supports customizing the scoring function to calculate approximate recall.
 
     Args:
         ytrue: list of true labels per example. When there are more than one correct labels per example, we treat a prediction is correct if it is
@@ -40,12 +44,9 @@ def precision_recall_f1(
         yipred = ypreds[i]
 
         if len(ytrue[i]) > 0 and yipred is not None:
-            # no correct label
-            score = max(
+            n_correct += max(
                 scoring_fn.get_match_score(yipred, yitrue) for yitrue in ytrue[i]
             )
-            if score > 0:
-                n_correct += 1
         else:
             assert (
                 len(ytrue[i]) == 0 or yipred is None
