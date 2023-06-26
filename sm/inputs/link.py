@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import List, Optional
 
 
@@ -33,6 +34,23 @@ class EntityId(str):
 
     def __getnewargs__(self) -> tuple[str, str]:
         return str(self), self.type
+
+
+class EntityIdWithScore:
+    """Represent an entity id with associated score"""
+
+    __slots__ = ("id", "score")
+
+    def __init__(self, id: EntityId, score: float) -> None:
+        self.id = id
+        self.score = score
+
+    def to_dict(self) -> dict:
+        return {"id": self.id.to_dict(), "score": self.score}
+
+    @staticmethod
+    def from_dict(obj: dict) -> EntityIdWithScore:
+        return EntityIdWithScore(EntityId.from_dict(obj["id"]), obj["score"])
 
 
 WIKIDATA = "wikidata"
