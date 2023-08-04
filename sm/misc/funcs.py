@@ -1,30 +1,28 @@
 import glob
+import importlib
+import math
+import re
+from contextlib import contextmanager
 from inspect import signature
 from multiprocessing import get_context
-import re
-import math
-from contextlib import contextmanager
 from multiprocessing.pool import ThreadPool
 from operator import itemgetter
 from pathlib import Path
 from typing import (
+    Any,
+    Callable,
     Dict,
     Iterable,
+    KeysView,
+    List,
     Literal,
+    Optional,
     TypeVar,
     Union,
-    Callable,
-    Any,
-    List,
-    Optional,
-    KeysView,
-    Iterable,
 )
 
 from loguru import logger
 from tqdm.auto import tqdm
-import importlib
-
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -102,7 +100,7 @@ def get_latest_version(file_pattern: Union[str, Path]) -> int:
     if len(files) == 0:
         return 0
 
-    versions = []
+    versions: list[int] = []
     for file in files:
         match = re.match(r"[^0-9]*(\d+)[^0-9]*", file.name)
         if match is None:
