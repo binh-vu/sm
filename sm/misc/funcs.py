@@ -52,8 +52,18 @@ def assert_not_null(x: Optional[V]) -> V:
     return x
 
 
-def percentage(a: Union[float, int], b: Union[float, int]) -> str:
-    return "%.2f%% (%d/%d)" % (a * 100 / b, a, b)
+def identity_func(x):
+    return x
+
+
+def percentage(
+    a: Union[float, int],
+    b: Union[float, int],
+    format: Optional[Callable[[Union[float, int]], str]] = None,
+) -> str:
+    if format is None:
+        return "%.2f%% (%d/%d)" % (a * 100 / b, a, b)
+    return "%.2f%% (%s/%s)" % (a * 100 / b, format(a), format(b))
 
 
 def is_non_decreasing_sequence(
@@ -82,10 +92,6 @@ def filter_duplication(
             keys.add(k)
             new_lst.append(k)
     return new_lst
-
-
-def identity_func(x):
-    return x
 
 
 def get_latest_version(file_pattern: Union[str, Path]) -> int:
