@@ -31,6 +31,7 @@ rsoup = "^3.0.1"
 Deprecated = "^1.2.13"
 ray = "^2.0.1"
 timer4 = ">= 1.0.4, < 2.0.0"
+typing-extensions = "^4.7.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.3"

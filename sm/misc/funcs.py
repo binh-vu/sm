@@ -17,13 +17,13 @@ from typing import (
     List,
     Literal,
     Optional,
-    TypeGuard,
     TypeVar,
     Union,
 )
 
 from loguru import logger
 from tqdm.auto import tqdm
+from typing_extensions import TypeGuard
 
 K = TypeVar("K")
 V = TypeVar("V")
