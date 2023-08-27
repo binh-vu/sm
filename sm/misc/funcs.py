@@ -17,6 +17,7 @@ from typing import (
     List,
     Literal,
     Optional,
+    TypeGuard,
     TypeVar,
     Union,
 )
@@ -50,6 +51,10 @@ def str2int(x):
 def assert_not_null(x: Optional[V]) -> V:
     assert x is not None
     return x
+
+
+def is_not_null(x: Optional[V]) -> TypeGuard[V]:
+    return x is not None
 
 
 def identity_func(x):
