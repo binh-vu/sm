@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sm.namespaces.namespace import OutOfNamespace, KnowledgeGraphNamespace
+from sm.namespaces.namespace import KnowledgeGraphNamespace, OutOfNamespace
 from sm.namespaces.prefix_index import PrefixIndex
 
 
@@ -17,6 +17,7 @@ class WikidataNamespace(KnowledgeGraphNamespace):
     ENTITY_ID = (
         "Q35120"  # the root entity of Wikidata, any other class is a subclass of this
     )
+    ENTITY_LABEL = "Entity (Q35120)"  # the label of the root entity
     STATEMENT_URI = (
         "http://wikiba.se/ontology#Statement"  # statement to represent n-ary relations
     )

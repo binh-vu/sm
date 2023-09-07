@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Optional, Protocol, Sequence, cast
+from typing import Optional, cast
 
 from sm.evaluation.sm_metrics import ScoringFn
 from sm.evaluation.utils import PrecisionRecallF1

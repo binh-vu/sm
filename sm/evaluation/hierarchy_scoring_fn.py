@@ -1,5 +1,5 @@
 import math
-from typing import Dict, Callable, List, Mapping, Protocol, Set, Iterable, Tuple
+from typing import Dict, Callable, List, Mapping, Protocol, Iterable, Tuple
 from dataclasses import dataclass
 from sm.evaluation.sm_metrics import ScoringFn
 from tqdm import tqdm

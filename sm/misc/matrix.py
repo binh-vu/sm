@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Callable, Iterator, TypeVar, Generic, List, Tuple, overload, Union
+from typing import Callable, Iterator, TypeVar, Generic, List, Tuple, overload
 from copy import deepcopy
 
 T = TypeVar("T")

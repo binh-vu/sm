@@ -14,7 +14,6 @@ from typing import (
     Optional,
     Callable,
     Generator,
-    TYPE_CHECKING,
 )
 
 from loguru import logger

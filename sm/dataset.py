@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from hashlib import md5
 from operator import attrgetter
 from pathlib import Path
-from typing import Callable, Generator, Generic, List, Literal, Optional, TypeVar, Union
+from typing import Generator, Generic, List, Literal, Optional, TypeVar, Union
 from urllib.parse import urlparse
 from zipfile import Path as ZipPath
 from zipfile import ZipFile
@@ -14,7 +14,7 @@ from serde import json
 from slugify import slugify
 
 from sm.inputs.prelude import ColumnBasedTable, Context, Link
-from sm.misc.funcs import batch, get_latest_path
+from sm.misc.funcs import batch
 from sm.misc.matrix import Matrix
 from sm.outputs.semantic_model import SemanticModel
 

@@ -1,12 +1,10 @@
 from dataclasses import dataclass
-from typing import List, Mapping, Sequence, Set, Optional, Dict, Union
+from typing import Dict, Mapping, Optional, Sequence, Set, Union
 
 from sm.evaluation import sm_metrics
-from sm.evaluation.utils import PrecisionRecallF1
-
-from sm.outputs.semantic_model import SemanticModel, DataNode
 from sm.evaluation.transformation import SemModelTransformation
-from sm.outputs.semantic_model import ClassNode
+from sm.evaluation.utils import PrecisionRecallF1
+from sm.outputs.semantic_model import ClassNode, DataNode, SemanticModel
 
 
 @dataclass
@@ -63,7 +61,7 @@ def _cta_real(
         gc = gold_cta[cindex]
         pc = pred_cta[cindex]
 
-        if isinstance(gc, (list, tuple, set)):
+        if not isinstance(gc, str):
             score += max(scoring_fn.get_match_score(pc, g) for g in gc)
         else:
             score += scoring_fn.get_match_score(pc, gc)
