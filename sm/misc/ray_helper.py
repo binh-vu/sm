@@ -1,8 +1,8 @@
 import functools
-from pathlib import Path
 import sqlite3
 import sys
 import time
+from pathlib import Path
 from typing import (
     Callable,
     List,
@@ -57,6 +57,11 @@ def ray_put(val: R, using_ray: bool = True) -> Union["ray.ObjectRef[R]", R]:
         return val
     ray_init(**ray_initargs)
     return ray.put(val)
+
+
+def ray_get_num_gpu() -> float:
+    ray_init(**ray_initargs)
+    return ray.available_resources()["GPU"]
 
 
 def ray_map(
