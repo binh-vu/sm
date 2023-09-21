@@ -74,6 +74,7 @@ def ray_map(
     using_ray: bool = True,
     is_func_remote: bool = True,
     remote_options: Optional[dict] = None,
+    auto_shutdown: bool = False,
 ) -> List[R]:
     global ray_initargs
 
@@ -133,6 +134,8 @@ def ray_map(
             for ref in ready_refs:
                 output[ref2index[ref]] = ray.get(ref)
 
+        if auto_shutdown:
+            ray.shutdown()
         return output
 
 
@@ -148,6 +151,7 @@ def ray_actor_map(
     using_ray: bool = True,
     is_actor_remote: bool = True,
     remote_options: Optional[dict] = None,
+    auto_shutdown: bool = False,
 ):
     global ray_initargs
 
@@ -209,6 +213,9 @@ def ray_actor_map(
             pbar.update(len(ready_refs))
             for ref in ready_refs:
                 output[ref2index[ref]] = ray.get(ref)
+
+        if auto_shutdown:
+            ray.shutdown()
 
         return output
 
