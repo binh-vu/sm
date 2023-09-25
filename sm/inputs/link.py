@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import List, Optional
 
+from sm.namespaces.namespace import KnowledgeGraphNamespace
+from sm.namespaces.wikidata import WikidataNamespace
+
 
 class EntityId(str):
     """Represent an entity id in a knowledge graph. Note that identifiers in knowledge graphs are supposed to disjoint and the type is just
@@ -34,6 +37,11 @@ class EntityId(str):
 
     def __getnewargs__(self) -> tuple[str, str]:
         return str(self), self.type
+
+    def belong_to(self, kgns: KnowledgeGraphNamespace) -> bool:
+        if self.type == WIKIDATA:
+            return isinstance(kgns, WikidataNamespace)
+        raise NotImplementedError(self.type)
 
 
 class EntityIdWithScore:
