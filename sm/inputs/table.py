@@ -30,6 +30,14 @@ class ColumnBasedTable:
             return 0, 0
         return len(self.columns[0].values), len(self.columns)
 
+    def ncols(self) -> int:
+        return len(self.columns)
+
+    def nrows(self) -> int:
+        if len(self.columns) == 0:
+            return 0
+        return len(self.columns[0].values)
+
     def get_column_by_index(self, col_idx: int) -> Column:
         return self.index2columns[col_idx]
 
