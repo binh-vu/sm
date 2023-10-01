@@ -99,6 +99,11 @@ class KnowledgeGraphNamespace(ABC, Namespace):
 
     @classmethod
     @abstractmethod
+    def is_abs_uri_property(cls, uri: str) -> bool:
+        ...
+
+    @classmethod
+    @abstractmethod
     def get_entity_id(cls, uri: str) -> str:
         ...
 
@@ -114,4 +119,14 @@ class KnowledgeGraphNamespace(ABC, Namespace):
     @classmethod
     @abstractmethod
     def get_prop_id(cls, uri: str) -> str:
+        ...
+
+    @classmethod
+    @abstractmethod
+    def get_prop_abs_uri(cls, iid: str) -> str:
+        ...
+
+    @classmethod
+    @abstractmethod
+    def get_prop_rel_uri(cls, iid: str) -> str:
         ...
