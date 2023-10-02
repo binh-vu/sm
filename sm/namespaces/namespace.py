@@ -59,6 +59,11 @@ class Namespace:
         """Check if an URI is relative."""
         return uri.count(":") == 1
 
+    @classmethod
+    def is_uri(cls, uri: str):
+        """Check if an URI is absolute."""
+        return uri.startswith("http://") or uri.startswith("https://")
+
     def is_uri_in_ns(self, abs_uri: str, prefix: Optional[str] = None):
         """Check if an absolute URI is in a namespace specified by the prefix."""
         if prefix is not None:
