@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Optional
 
 import serde.yaml
-
 from sm.namespaces.prefix_index import PrefixIndex
 
 
@@ -96,6 +95,10 @@ class Namespace:
 
 class KnowledgeGraphNamespace(ABC, Namespace):
     """Abstract class for knowledge graph namespaces that allows to detect and convert between entity URIs and IDs"""
+
+    @classmethod
+    def is_valid_id(cls, id: str) -> bool:
+        ...
 
     @classmethod
     @abstractmethod
