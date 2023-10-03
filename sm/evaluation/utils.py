@@ -35,7 +35,6 @@ class PrecisionRecallF1:
         precision = sum([x.precision for x in lst]) / n
         recall = sum([x.recall for x in lst]) / n
         f1 = sum([x.f1 for x in lst]) / n
-
         return PrecisionRecallF1(precision, recall, f1)
 
     def iter_prf(self):
@@ -44,3 +43,8 @@ class PrecisionRecallF1:
             ("recall", self.recall),
             ("f1", self.f1),
         ]
+
+
+@dataclass
+class PrecisionRecallF1Support(PrecisionRecallF1):
+    support: int  # the number of examples used to compute this metric

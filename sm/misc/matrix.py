@@ -1,7 +1,8 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Callable, Iterator, TypeVar, Generic, List, Tuple, overload
+
 from copy import deepcopy
+from dataclasses import dataclass
+from typing import Callable, Generic, Iterator, List, Tuple, TypeVar, overload
 
 T = TypeVar("T")
 T1 = TypeVar("T1")
@@ -93,3 +94,7 @@ class Matrix(Generic[T]):
 
     def map(self, fn: Callable[[T], T1]) -> Matrix[T1]:
         return Matrix([[fn(item) for item in row] for row in self.data])
+
+    def map_index(self, fn: Callable[[int, int], T1]) -> Matrix[T1]:
+        nrows, ncols = self.shape()
+        return Matrix([[fn(ri, ci) for ci in range(ncols)] for ri in range(nrows)])
