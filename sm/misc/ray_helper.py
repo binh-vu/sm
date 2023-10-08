@@ -85,7 +85,7 @@ def ray_map(
         else:
             localfn = cast(Callable[..., R], fn)
         output = []
-        for arg in tqdm(args_lst, desc=desc, disable=not verbose):
+        for arg in tqdm(args_lst, desc=desc, disable=not verbose or len(args_lst) <= 1):
             newarg = []
             for x in arg:
                 if isinstance(x, ray.ObjectRef):
