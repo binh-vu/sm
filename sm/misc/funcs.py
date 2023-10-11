@@ -221,6 +221,28 @@ def auto_wrap(
     return "\n".join(new_sublines)
 
 
+def exchange_keyvalue(
+    odict: dict[K, V] | dict[K, Iterable[V]], is_bijection: bool = False
+) -> dict[V, list[K]] | dict[V, K]:
+    out = {}
+    if is_bijection:
+        for k, v in odict.items():
+            assert v not in out
+            out[v] = k
+    else:
+        for k, v in odict.items():
+            if isinstance(v, Iterable):
+                for x in v:
+                    if x not in out:
+                        out[x] = []
+                    out[x].append(k)
+            else:
+                if v not in out:
+                    out[v] = []
+                out[v].append(k)
+    return out
+
+
 def flatten_dict(odict: dict, result: Optional[dict] = None, prefix: str = ""):
     if result is None:
         result = {}

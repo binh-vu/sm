@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import shutil
 from contextlib import contextmanager
 from dataclasses import dataclass
 from hashlib import md5
 from operator import attrgetter
 from pathlib import Path
-from typing import Generator, Generic, List, Literal, Optional, TypeVar, Union
+from typing import Generator, Generic, Literal, Optional, TypeVar, Union
 from urllib.parse import urlparse
 from zipfile import Path as ZipPath
 from zipfile import ZipFile
@@ -12,7 +14,6 @@ from zipfile import ZipFile
 import orjson
 from serde import json
 from slugify import slugify
-
 from sm.inputs.prelude import ColumnBasedTable, Context, Link
 from sm.misc.funcs import batch
 from sm.misc.matrix import Matrix
@@ -23,7 +24,7 @@ T = TypeVar("T", covariant=True)
 
 @dataclass
 class Example(Generic[T]):
-    sms: List[SemanticModel]
+    sms: list[SemanticModel]
     table: T
 
 
@@ -31,14 +32,23 @@ class Example(Generic[T]):
 class FullTable:
     table: ColumnBasedTable
     context: Context
-    links: Matrix[List[Link]]
+    links: Matrix[list[Link]]
 
-    def keep_rows(self, row_index: List[int]):
+    def keep_rows(self, row_index: list[int]):
         """Keep only the rows in the table that are in row_index."""
         self.links.data = [self.links.data[i] for i in row_index]
         self.table._df = None
         for col in self.table.columns:
             col.values = [col.values[i] for i in row_index]
+
+    def remove_empty_links(self) -> FullTable:
+        return FullTable(
+            self.table,
+            self.context,
+            self.links.map(
+                lambda links: [link for link in links if link.end > link.start]
+            ),
+        )
 
     def to_dict(self):
         return {
@@ -99,7 +109,7 @@ class Dataset:
     def is_zip_file(self):
         return self.location.name.endswith(".zip")
 
-    def load(self) -> List[Example[FullTable]]:
+    def load(self) -> list[Example[FullTable]]:
         """Load dataset from a folder. Assuming the following structure:
 
         descriptions (containing semantic descriptions of tables)
@@ -201,7 +211,7 @@ class Dataset:
 
     def save(
         self,
-        examples: List[Example[FullTable]],
+        examples: list[Example[FullTable]],
         individual_table_compressed: Optional[Literal["gz", "bz2", "lz4"]] = None,
         batch_compressed: bool = False,
         batch_size: int = 100,
@@ -226,7 +236,7 @@ class Dataset:
 
         if batch_compressed:
             for i, bexamples in enumerate(batch(batch_size, examples)):
-                bexamples: List[Example[FullTable]]
+                bexamples: list[Example[FullTable]]
                 filename = f"part-{i:04d}.zip"
                 with ZipFile(descdir / filename, "w") as dzf, ZipFile(
                     tabledir / filename, "w"
