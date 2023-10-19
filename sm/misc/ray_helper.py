@@ -61,7 +61,7 @@ def ray_put(val: R, using_ray: bool = True) -> Union["ray.ObjectRef[R]", R]:
 
 def ray_get_num_gpu() -> float:
     ray_init(**ray_initargs)
-    return ray.available_resources()["GPU"]
+    return ray.available_resources().get("GPU", 0)
 
 
 def ray_map(
