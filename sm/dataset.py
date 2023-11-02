@@ -18,6 +18,7 @@ from sm.inputs.prelude import ColumnBasedTable, Context, Link
 from sm.misc.funcs import batch
 from sm.misc.matrix import Matrix
 from sm.outputs.semantic_model import SemanticModel
+from typing_extensions import Self
 
 T = TypeVar("T", covariant=True)
 
@@ -41,11 +42,11 @@ class FullTable:
         for col in self.table.columns:
             col.values = [col.values[i] for i in row_index]
 
-    def remove_empty_links(self) -> FullTable:
-        return FullTable(
-            self.table,
-            self.context,
-            self.links.map(
+    def remove_empty_links(self) -> Self:
+        return self.__class__(
+            table=self.table,
+            context=self.context,
+            links=self.links.map(
                 lambda links: [link for link in links if link.end > link.start]
             ),
         )

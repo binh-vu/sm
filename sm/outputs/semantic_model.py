@@ -9,17 +9,13 @@ import matplotlib.pyplot as plt
 import orjson
 import pydot
 from colorama import Back, Fore, Style, init
-from graph.retworkx import (
-    BaseEdge,
-    BaseNode,
-    RetworkXDiGraph,
-)
+from graph.retworkx import BaseEdge, BaseNode, RetworkXDiGraph
 from IPython import get_ipython
 from IPython.display import display
 from PIL import Image
 from rdflib.namespace import RDFS
-from sm.misc.funcs import auto_wrap, group_by
 from sm.misc.bijection import Bijection
+from sm.misc.funcs import auto_wrap, group_by
 
 
 @dataclass
@@ -455,7 +451,10 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
                     )
                 )
             else:
-                label = auto_wrap(u.value, max_char_per_line)
+                if u.readable_label is not None:
+                    label = u.readable_label
+                else:
+                    label = auto_wrap(u.value, max_char_per_line)
                 dot_g.add_node(
                     pydot.Node(
                         name=u.id,
