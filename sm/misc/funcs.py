@@ -10,7 +10,17 @@ from multiprocessing import get_context
 from multiprocessing.pool import ThreadPool
 from operator import itemgetter
 from pathlib import Path
-from typing import Any, Callable, Iterable, KeysView, Literal, Optional, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    KeysView,
+    Literal,
+    Mapping,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 from loguru import logger
 from tqdm.auto import tqdm
@@ -406,7 +416,7 @@ V = TypeVar("V")
 V2 = TypeVar("V2")
 
 
-class DictProxy(dict[K, V2]):
+class DictProxy(Mapping[K, V2]):
     """Dictionary proxy to access objects' property
 
     Args:
