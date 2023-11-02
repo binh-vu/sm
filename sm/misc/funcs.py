@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import glob
 import importlib
 import math
@@ -8,18 +10,7 @@ from multiprocessing import get_context
 from multiprocessing.pool import ThreadPool
 from operator import itemgetter
 from pathlib import Path
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    KeysView,
-    List,
-    Literal,
-    Optional,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, Iterable, KeysView, Literal, Optional, TypeVar, Union
 
 from loguru import logger
 from tqdm.auto import tqdm
@@ -72,14 +63,14 @@ def percentage(
 
 
 def is_non_decreasing_sequence(
-    lst: Union[List[Union[int, float]], List[int], List[float]]
+    lst: Union[list[Union[int, float]], list[int], list[float]]
 ) -> bool:
     return len(lst) == 0 or (all(lst[i - 1] <= lst[i] for i in range(1, len(lst))))
 
 
 def filter_duplication(
     lst: Iterable[V], key_fn: Optional[Callable[[V], Any]] = None
-) -> List[V]:
+) -> list[V]:
     keys = set()
     new_lst = []
     if key_fn is not None:
@@ -177,7 +168,7 @@ def get_latest_path(path: Union[str, Path]) -> Optional[Path]:
 def auto_wrap(
     word: str,
     max_char_per_line: int,
-    delimiters: Optional[List[str]] = None,
+    delimiters: Optional[list[str]] = None,
     camelcase_split: bool = True,
 ) -> str:
     """
@@ -194,7 +185,7 @@ def auto_wrap(
     if delimiters is None:
         delimiters = [" ", ":", "_", "/"]
 
-    sublines: List[str] = [""]
+    sublines: list[str] = [""]
     for i, c in enumerate(word):
         if c not in delimiters:
             sublines[-1] += c
@@ -211,7 +202,7 @@ def auto_wrap(
             sublines[-1] += c
             sublines.append("")
 
-    new_sublines: List[str] = [""]
+    new_sublines: list[str] = [""]
     for line in sublines:
         if len(new_sublines[-1]) + len(line) <= max_char_per_line:
             new_sublines[-1] += line
@@ -288,7 +279,7 @@ def batch(size: int, *vars, return_tuple: bool = False):
     return output
 
 
-def group_by(lst: Iterable[V], key: Callable[[V], K]) -> Dict[K, List[V]]:
+def group_by(lst: Iterable[V], key: Callable[[V], K]) -> dict[K, list[V]]:
     odict = {}
     for item in lst:
         k = key(item)
@@ -300,7 +291,7 @@ def group_by(lst: Iterable[V], key: Callable[[V], K]) -> Dict[K, List[V]]:
 
 def create_group_by_index(
     lst: Iterable[V], key: Callable[[V], K]
-) -> Dict[K, List[int]]:
+) -> dict[K, list[int]]:
     odict = {}
     for i, item in enumerate(lst):
         k = key(item)
@@ -415,7 +406,7 @@ V = TypeVar("V")
 V2 = TypeVar("V2")
 
 
-class DictProxy(Dict[K, V2]):
+class DictProxy(dict[K, V2]):
     """Dictionary proxy to access objects' property
 
     Args:
@@ -423,7 +414,7 @@ class DictProxy(Dict[K, V2]):
         access: function to access property of an object
     """
 
-    def __init__(self, odict: Dict[K, V], access: Callable[[V], V2]):
+    def __init__(self, odict: dict[K, V], access: Callable[[V], V2]):
         self.odict = odict
         self.access = access
 
