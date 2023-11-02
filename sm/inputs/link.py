@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 from sm.namespaces.namespace import KnowledgeGraphNamespace
+from sm.namespaces.utils import KGName
 from sm.namespaces.wikidata import WikidataNamespace
 
 
@@ -39,7 +40,7 @@ class EntityId(str):
         return str(self), self.type
 
     def belong_to(self, kgns: KnowledgeGraphNamespace) -> bool:
-        if self.type == WIKIDATA:
+        if self.type == KGName.Wikidata:
             return isinstance(kgns, WikidataNamespace)
         raise NotImplementedError(self.type)
 
@@ -61,8 +62,7 @@ class EntityIdWithScore:
         return EntityIdWithScore(EntityId.from_dict(obj["id"]), obj["score"])
 
 
-WIKIDATA = "wikidata"
-WIKIDATA_NIL_ENTITY = EntityId("Q0", WIKIDATA)
+WIKIDATA_NIL_ENTITY = EntityId("Q0", KGName.Wikidata)
 
 
 class Link:
@@ -112,7 +112,7 @@ class Link:
                 start=obj["start"],
                 end=obj["end"],
                 url=obj["url"],
-                entities=[EntityId(id=eid, type=WIKIDATA)]
+                entities=[EntityId(id=eid, type=KGName.Wikidata)]
                 if (eid := obj["entity_id"]) is not None
                 else [],
             )

@@ -1,23 +1,28 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Optional
+
 from rsoup.core import ContentHierarchy
 from sm.inputs.link import EntityId
+from sm.namespaces.utils import KGName
 
 
 @dataclass
 class Context:
     page_title: Optional[str] = None
     page_url: Optional[str] = None
-    page_entities: List[EntityId] = field(default_factory=list)
-    content_hierarchy: List[ContentHierarchy] = field(default_factory=list)
+    entities: list[EntityId] = field(default_factory=list)
+    literals: list[str | int] = field(default_factory=list)
+    content_hierarchy: list[ContentHierarchy] = field(default_factory=list)
 
     def to_dict(self):
         return {
-            "version": 2,
+            "version": 3,
             "page_title": self.page_title,
             "page_url": self.page_url,
-            "page_entities": [e.to_dict() for e in self.page_entities],
+            "entities": [e.to_dict() for e in self.entities],
+            "literals": self.literals,
             "content_hierarchy": [c.to_dict() for c in self.content_hierarchy],
         }
 
@@ -28,7 +33,7 @@ class Context:
             return Context(
                 page_title=obj.get("page_title"),
                 page_url=obj.get("page_url"),
-                page_entities=[EntityId(r, "wikidata")]
+                entities=[EntityId(r, KGName.Wikidata)]
                 if (r := obj.get("page_entity_id")) is not None
                 else [],
                 content_hierarchy=[
@@ -40,7 +45,18 @@ class Context:
             return Context(
                 page_title=obj.get("page_title"),
                 page_url=obj.get("page_url"),
-                page_entities=[EntityId.from_dict(o) for o in obj["page_entities"]],
+                entities=[EntityId.from_dict(o) for o in obj["page_entities"]],
+                content_hierarchy=[
+                    ContentHierarchy.from_dict(c)
+                    for c in obj.get("content_hierarchy", [])
+                ],
+            )
+        if version == 3:
+            return Context(
+                page_title=obj.get("page_title"),
+                page_url=obj.get("page_url"),
+                entities=[EntityId.from_dict(o) for o in obj["entities"]],
+                literals=obj["literals"],
                 content_hierarchy=[
                     ContentHierarchy.from_dict(c)
                     for c in obj.get("content_hierarchy", [])
@@ -52,14 +68,16 @@ class Context:
         return {
             "page_title": self.page_title,
             "page_url": self.page_url,
-            "page_entities": self.page_entities,
+            "entities": self.entities,
+            "literals": self.literals,
             "content_hierarchy": [c.to_dict() for c in self.content_hierarchy],
         }
 
     def __setstate__(self, state):
         self.page_title = state["page_title"]
         self.page_url = state["page_url"]
-        self.page_entities = state["page_entities"]
+        self.entities = state["entities"]
+        self.literals = state["literals"]
         self.content_hierarchy = [
             ContentHierarchy.from_dict(c) for c in state.get("content_hierarchy", [])
         ]

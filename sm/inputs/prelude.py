@@ -1,6 +1,6 @@
 from .column import Column
 from .context import Context
-from .link import WIKIDATA, WIKIDATA_NIL_ENTITY, EntityId, EntityIdWithScore, Link
+from .link import WIKIDATA_NIL_ENTITY, EntityId, EntityIdWithScore, Link
 from .table import ColumnBasedTable
 
 __all__ = [
@@ -10,6 +10,5 @@ __all__ = [
     "EntityId",
     "EntityIdWithScore",
     "Link",
-    "WIKIDATA",
     "WIKIDATA_NIL_ENTITY",
 ]
