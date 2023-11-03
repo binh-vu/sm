@@ -1,17 +1,9 @@
 import functools
 import os
 from pathlib import Path
+from typing import Any, Callable, MutableMapping, Optional, Sequence, TypeVar, Union
 
 import orjson
-from typing import (
-    Callable,
-    MutableMapping,
-    Sequence,
-    Any,
-    Optional,
-    Union,
-    TypeVar,
-)
 
 F = TypeVar("F", bound=Callable)
 
@@ -35,9 +27,7 @@ class CacheMethod:
 
     @staticmethod
     def auto_object_args(args, _kwargs):
-        return tuple(
-            x if isinstance(x, (str, int, bool)) else id(x) for x in args
-        )
+        return tuple(x if isinstance(x, (str, int, bool)) else id(x) for x in args)
 
     @staticmethod
     def as_is_posargs(args, _kwargs):
@@ -111,22 +101,6 @@ def skip_if_file_exist(filepath: Union[Path, str]):
     return wrapper_fn
 
 
-def exec_or_skip_if_file_exist(filepath: Union[Path, str], skip: bool = False):
-    """Skip running a function if a file exist. Otherwise, run it"""
-
-    def wrapper_fn(func):
-        @functools.wraps(func)
-        def fn():
-            if os.path.exists(filepath):
-                return
-            func()
-
-        if not skip:
-            fn()
-
-    return wrapper_fn
-
-
 def cache_fn(
     cache: MutableMapping[bytes, Any],
     key: Optional[Callable[[str, tuple, dict], bytes]] = None,
@@ -136,7 +110,6 @@ def cache_fn(
 
         @functools.wraps(func)
         def fn(self, *args, **kwargs):
-
             k = orjson.dumps((fn_name, args, kwargs))
             if k not in cache:
                 cache[k] = func(self, *args, **kwargs)

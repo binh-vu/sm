@@ -2,7 +2,6 @@ from collections import OrderedDict, defaultdict
 from typing import List, Optional, Sequence, Tuple, Union
 
 import pandas as pd
-
 from sm.inputs.column import Column
 
 
@@ -67,7 +66,7 @@ class ColumnBasedTable:
 
     def to_dict(self):
         return {
-            "version": "2",
+            "version": 2,
             "table_id": self.table_id,
             "columns": [col.to_dict() for col in self.columns],
         }
@@ -77,7 +76,8 @@ class ColumnBasedTable:
 
     @staticmethod
     def from_dict(record: dict):
-        assert record.get("version", None) == "2", record.get("version", None)
+        version = record.get("version", None)
+        assert version == 2 or version == "2", version
         return ColumnBasedTable(
             record["table_id"],
             [

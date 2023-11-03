@@ -68,15 +68,21 @@ class FullTable:
         if not (version == "1.2" or version == "1.1" or version == 2):
             raise ValueError(f"Unknown version: {version}")
 
-        return cls(
-            table=ColumnBasedTable.from_dict(obj["table"]),
-            context=Context.from_dict(obj["context"]),
-            links=Matrix(
+        table = ColumnBasedTable.from_dict(obj["table"])
+        if "links" in obj:
+            links = Matrix(
                 [
                     [[Link.from_dict(link) for link in cell] for cell in row]
                     for row in obj["links"]
                 ]
-            ),
+            )
+        else:
+            links = Matrix.default(table.shape(), list)
+
+        return cls(
+            table=table,
+            context=Context.from_dict(obj["context"]),
+            links=links,
         )
 
 
