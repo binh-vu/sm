@@ -1,9 +1,12 @@
 import functools
 import os
+import pickle
 from pathlib import Path
 from typing import Any, Callable, MutableMapping, Optional, Sequence, TypeVar, Union
 
 import orjson
+import serde.pickle
+from serde.helper import get_open_fn
 
 F = TypeVar("F", bound=Callable)
 
@@ -86,15 +89,20 @@ class CacheMethod:
         return wrapper_fn  # type: ignore
 
 
-def skip_if_file_exist(filepath: Union[Path, str]):
-    """Skip running a function if a file exist"""
-
+def cache_to_file(
+    filepath: Union[Path, str],
+    serialize: Callable[[Any, Path | str], None] = serde.pickle.ser,
+    deserialize: Callable[[Path | str], Any] = serde.pickle.deser,
+):
     def wrapper_fn(func):
         @functools.wraps(func)
-        def fn(*args, **kwargs):
+        def fn():
             if os.path.exists(filepath):
-                return
-            func(*args, **kwargs)
+                return deserialize(filepath)
+
+            res = func()
+            serialize(res, filepath)
+            return res
 
         return fn
 
