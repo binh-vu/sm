@@ -39,6 +39,14 @@ class Namespace:
 
         return cls(prefix2ns, ns2prefix, prefix_index)
 
+    @classmethod
+    def from_prefix2ns(cls, prefix2ns: dict[str, str]):
+        ns2prefix = {v: k for k, v in prefix2ns.items()}
+        assert len(ns2prefix) == len(prefix2ns), "Duplicated namespaces"
+        prefix_index = PrefixIndex.create(ns2prefix)
+
+        return cls(prefix2ns, ns2prefix, prefix_index)
+
     def get_abs_uri(self, rel_uri: str):
         """Get absolute URI from relative URI."""
         prefix, name = rel_uri.split(":", 2)
