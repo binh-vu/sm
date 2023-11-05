@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from sm.namespaces.namespace import KnowledgeGraphNamespace, OutOfNamespace
 from sm.namespaces.prefix_index import PrefixIndex
 
@@ -12,16 +14,23 @@ class WikidataNamespace(KnowledgeGraphNamespace):
     For example, we use p:P131 instead of wd:P131.
     """
 
-    __slots__ = ("entity_prefix", "property_prefix")
+    __slots__ = ("entity_prefix", "entity_ns", "property_prefix", "property_ns")
 
-    ENTITY_ID = (
-        "Q35120"  # the root entity of Wikidata, any other class is a subclass of this
+    # the root entity of Wikidata, any other class is a subclass of this
+    entity_id: str = "Q35120"
+    entity_uri: str = "http://www.wikidata.org/entity/Q35120"
+    entity_label: str = "Entity (Q35120)"  # the label of the root entity
+    # statement to represent n-ary relations
+    statement_uri: str = "http://wikiba.se/ontology#Statement"
+    main_namespaces: list[str] = [
+        "http://www.wikidata.org/prop/",
+        "http://www.wikidata.org/entity/",
+    ]
+
+    URI_RE = re.compile(
+        r"^https?:\/\/www\.wikidata\.org\/(?:entity\/|prop\/|wiki\/Property:|wiki\/)([QPL]\d+)$"
     )
-    ENTITY_LABEL = "Entity (Q35120)"  # the label of the root entity
-    STATEMENT_URI = (
-        "http://wikiba.se/ontology#Statement"  # statement to represent n-ary relations
-    )
-    DUMMY_CLASS_FOR_INVERSION_URI = "http://wikiba.se/ontology#DummyClassForInversion"
+    IS_WIKIDATA_URI = re.compile(r"^https?:\/\/www\.wikidata\.org\/")
 
     @staticmethod
     def create():
@@ -61,8 +70,10 @@ class WikidataNamespace(KnowledgeGraphNamespace):
         prefix_index: PrefixIndex,
     ):
         super().__init__(prefix2ns, ns2prefix, prefix_index)
-        self.entity_prefix = self.ns2prefix["http://www.wikidata.org/entity/"]
-        self.property_prefix = self.ns2prefix["http://www.wikidata.org/prop/"]
+        self.entity_prefix = "wd"
+        self.property_prefix = "p"
+        self.entity_ns = self.prefix2ns[self.entity_prefix]
+        self.property_ns = self.prefix2ns[self.property_prefix]
 
     ###############################################################################
     # URI testing
@@ -70,11 +81,7 @@ class WikidataNamespace(KnowledgeGraphNamespace):
 
     @classmethod
     def is_abs_uri_statement(cls, uri: str):
-        return uri == WikidataNamespace.STATEMENT_URI
-
-    @classmethod
-    def is_abs_uri_dummy_class(cls, uri: str):
-        return uri == WikidataNamespace.DUMMY_CLASS_FOR_INVERSION_URI
+        return uri == WikidataNamespace.statement_uri
 
     @classmethod
     def is_abs_uri_property(cls, uri: str):
@@ -98,47 +105,24 @@ class WikidataNamespace(KnowledgeGraphNamespace):
     # Converting between URI and ID
     ###############################################################################
 
-    @classmethod
-    def is_valid_id(cls, id: str):
+    def is_id(self, id: str):
         return (id[0] == "Q" or id[0] == "P" or id[0] == "L") and id[1:].isdigit()
 
-    @classmethod
-    def get_entity_id(cls, uri: str):
-        if uri.startswith("http://www.wikidata.org/entity/"):
-            return uri[31:]
-        if uri.startswith("http://www.wikidata.org/wiki/"):
-            return uri[29:]
-        if uri.startswith("https://www.wikidata.org/wiki/"):
-            return uri[30:]
-        raise OutOfNamespace(f"{uri} is not in wikidata entity namespace")
+    def is_uri_in_main_ns(self, uri: str) -> bool:
+        return self.URI_RE.match(uri) is not None
 
-    @classmethod
-    def get_prop_id(cls, uri: str):
-        if uri.startswith("http://www.wikidata.org/prop/"):
-            # so this we can handle /prop/ and /prop/direct/
-            return uri[uri.rfind("/") + 1 :]
-        if uri.startswith("http://www.wikidata.org/entity/P"):
-            return uri[31:]
-        if uri.startswith("http://www.wikidata.org/wiki/Property:"):
-            return uri[38:]
-        if uri.startswith("https://www.wikidata.org/wiki/Property:"):
-            return uri[39:]
-        raise OutOfNamespace(f"{uri} is not in wikidata property namespace")
+    def uri_to_id(self, uri: str) -> str:
+        m = self.URI_RE.match(uri)
+        if m is None:
+            raise OutOfNamespace(f"{uri} is not in wikidata namespace")
+        return m.group(1)
 
-    @classmethod
-    def get_entity_abs_uri(cls, iid: str):
-        assert cls.is_valid_id(iid), iid
-        return f"http://www.wikidata.org/entity/{iid}"
+    def id_to_uri(self, id: str):
+        assert self.is_id(id), id
+        if id[0] == "Q" or id[0] == "L":
+            return f"{self.entity_ns}{id}"
+        assert id[0] == "P"
+        return f"{self.property_ns}{id}"
 
-    @classmethod
-    def get_prop_abs_uri(cls, pid: str):
-        assert cls.is_valid_id(pid), pid
-        return f"http://www.wikidata.org/prop/{pid}"
-
-    def get_entity_rel_uri(self, iid: str):
-        assert self.is_valid_id(iid), iid
-        return f"{self.entity_prefix}:{iid}"
-
-    def get_prop_rel_uri(self, pid: str):
-        assert self.is_valid_id(pid), pid
-        return f"{self.property_prefix}:{pid}"
+    def has_encrypted_name(self, uri: str):
+        return self.IS_WIKIDATA_URI.match(uri) is not None

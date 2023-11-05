@@ -77,10 +77,10 @@ class Namespace:
             return abs_uri.startswith(self.prefix2ns[prefix])
         return any(abs_uri.startswith(ns) for ns in self.prefix2ns.values())
 
-    def get_resource_id(self, abs_uri: str):
+    def get_local_name(self, abs_uri: str):
         """
-        Get the resource id from an absolute URI in its namespace, stripped out the namespace prefix.
-        There is no guarantee that resources in different namespaces won't have the same id.
+        Get the local name from an absolute URI in its namespace, stripped out the namespace prefix.
+        There is no guarantee that resources in different namespaces won't have the same local name.
 
         Examples:
         - http://www.wikidata.org/entity/Q512 -> Q512
@@ -102,47 +102,82 @@ class Namespace:
 
 
 class KnowledgeGraphNamespace(ABC, Namespace):
-    """Abstract class for knowledge graph namespaces that allows to detect and convert between entity URIs and IDs"""
+    """Abstract class for knowledge graph namespaces that allows to detect and convert between entity URIs and IDs.
+    In Wikidata, IDs are local names. To generalize this across multiple namespaces, we can treat IDs as relative URIs.
+    """
 
-    @classmethod
-    def is_valid_id(cls, id: str) -> bool:
-        ...
-
-    @classmethod
+    @property
     @abstractmethod
-    def is_abs_uri_entity(cls, uri: str) -> bool:
+    def entity_id(self) -> str:
+        """ID of the entity class, which all entities are instance of"""
         ...
 
-    @classmethod
+    @property
     @abstractmethod
-    def is_abs_uri_property(cls, uri: str) -> bool:
+    def entity_uri(self) -> str:
+        """URI of the entity class, which all entities are instance of"""
         ...
 
-    @classmethod
+    @property
     @abstractmethod
-    def get_entity_id(cls, uri: str) -> str:
+    def entity_label(self) -> str:
+        """Label of the entity class, which all entities are instance of"""
         ...
 
-    @classmethod
+    @property
     @abstractmethod
-    def get_entity_abs_uri(cls, iid: str) -> str:
+    def statement_uri(self) -> str:
+        """URI of a special class (Statement) that is used to represent n-ary relationship."""
+        ...
+
+    @property
+    @abstractmethod
+    def main_namespaces(self) -> list[str]:
+        """Get a list of main namespaces of the KG that contains entities/properties/classes. URIs in these
+        main namespaces should have equivalent IDs."""
         ...
 
     @abstractmethod
-    def get_entity_rel_uri(self, iid: str) -> str:
+    def is_id(self, uri_or_id: str) -> bool:
+        """Test if the input string is an ID in this namespace"""
         ...
 
-    @classmethod
+    def is_uri_in_main_ns(self, uri: str) -> bool:
+        """Test if an URI has an equivalent ID in the main namespaces. For example:
+        QXXX and PXXX are IDs in Wikidata namespace, but wikibase:Statement isn't.
+
+        This function can be used to determine if an URI is in the database or not.
+        """
+        return any(uri.startswith(ns) for ns in self.main_namespaces)
+
     @abstractmethod
-    def get_prop_id(cls, uri: str) -> str:
+    def uri_to_id(self, uri: str) -> str:
+        """Convert an URI to an ID in this namespace"""
         ...
 
-    @classmethod
     @abstractmethod
-    def get_prop_abs_uri(cls, iid: str) -> str:
+    def id_to_uri(self, id: str) -> str:
+        """Convert ID to URI"""
         ...
 
-    @classmethod
     @abstractmethod
-    def get_prop_rel_uri(cls, iid: str) -> str:
+    def has_encrypted_name(self, uri: str):
+        """Test if a URI has encrypted name such as QXXX so that we can add label to make it readable."""
         ...
+
+
+class DefaultKnowledgeGraphNamespace(KnowledgeGraphNamespace):
+    """This is KG namespace for RDF world, we do not have ID and everything
+    is identified by URI."""
+
+    def is_id(self, uri_or_id: str) -> bool:
+        return True
+
+    def uri_to_id(self, uri: str) -> str:
+        return uri
+
+    def id_to_uri(self, id: str) -> str:
+        return id
+
+    def has_encrypted_name(self, uri: str):
+        return False
