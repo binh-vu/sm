@@ -1,12 +1,12 @@
+from __future__ import annotations
+
 import functools
 import os
-import pickle
 from pathlib import Path
 from typing import Any, Callable, MutableMapping, Optional, Sequence, TypeVar, Union
 
 import orjson
 import serde.pickle
-from serde.helper import get_open_fn
 
 F = TypeVar("F", bound=Callable)
 
