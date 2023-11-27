@@ -14,17 +14,19 @@ from zipfile import ZipFile
 import orjson
 from serde import json
 from slugify import slugify
+from typing_extensions import Self
+
 from sm.inputs.prelude import ColumnBasedTable, Context, Link
 from sm.misc.funcs import batch
 from sm.misc.matrix import Matrix
 from sm.outputs.semantic_model import SemanticModel
-from typing_extensions import Self
 
 T = TypeVar("T", covariant=True)
 
 
 @dataclass
 class Example(Generic[T]):
+    id: str
     sms: list[SemanticModel]
     table: T
 
@@ -176,14 +178,16 @@ class Dataset:
                     else:
                         sms = []
 
-                    examples.append(Example(sms=sms, table=table))
+                    examples.append(
+                        Example(id=table.table.table_id, sms=sms, table=table)
+                    )
                 elif infile.name.endswith(".zip"):
                     assert (
                         isinstance(infile, Path)
                         and isinstance(descdir, Path)
                         and not self.is_zip_file()
                     ), "Must not be a zip file"
-                    part = {}
+                    part: dict[str, FullTable] = {}
                     with ZipFile(infile, mode="r") as zf:
                         for file in zf.infolist():
                             if not file.filename.endswith(".json"):
@@ -208,9 +212,16 @@ class Dataset:
                                         SemanticModel.from_dict(sm)
                                         for sm in orjson.loads(f.read())
                                     ]
-                                    lst.append(Example(sms=sms, table=part[table_id]))
+                                    lst.append(
+                                        Example(
+                                            id=table_id, sms=sms, table=part[table_id]
+                                        )
+                                    )
                     else:
-                        lst = [Example(sms=[], table=table) for table in part.values()]
+                        lst = [
+                            Example(id=table.table.table_id, sms=[], table=table)
+                            for table in part.values()
+                        ]
                     assert len(lst) == len(part)
                     examples.extend(lst)
 
