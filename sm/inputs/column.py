@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import re
 from typing import List, Optional
@@ -52,6 +54,9 @@ class Column:
 
     def __setitem__(self, key, value):
         self.values[key] = value
+
+    def select_rows(self, indices: list[int]) -> Column:
+        return Column(self.index, self.name, [self.values[i] for i in indices])
 
     def to_dict(self):
         return {"index": self.index, "name": self.name, "values": self.values}

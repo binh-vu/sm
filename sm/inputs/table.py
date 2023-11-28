@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from collections import OrderedDict, defaultdict
 from typing import List, Optional, Sequence, Tuple, Union
 
 import pandas as pd
+
 from sm.inputs.column import Column
 
 
@@ -28,6 +31,12 @@ class ColumnBasedTable:
         if len(self.columns) == 0:
             return 0, 0
         return len(self.columns[0].values), len(self.columns)
+
+    def select_rows(self, indices: list[int]) -> ColumnBasedTable:
+        """Select a subset of rows based on a boolean mask"""
+        return ColumnBasedTable(
+            self.table_id, [col.select_rows(indices) for col in self.columns]
+        )
 
     def ncols(self) -> int:
         return len(self.columns)

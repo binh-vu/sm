@@ -1,12 +1,22 @@
 from __future__ import annotations
 
+import random
 import shutil
 from contextlib import contextmanager
 from dataclasses import dataclass
 from hashlib import md5
 from operator import attrgetter
 from pathlib import Path
-from typing import Generator, Generic, Literal, Optional, TypeVar, Union
+from typing import (
+    Generator,
+    Generic,
+    Literal,
+    Optional,
+    Protocol,
+    Sequence,
+    TypeVar,
+    Union,
+)
 from urllib.parse import urlparse
 from zipfile import Path as ZipPath
 from zipfile import ZipFile
@@ -37,12 +47,16 @@ class FullTable:
     context: Context
     links: Matrix[list[Link]]
 
-    def keep_rows(self, row_index: list[int]):
-        """Keep only the rows in the table that are in row_index."""
-        self.links.data = [self.links.data[i] for i in row_index]
-        self.table._df = None
-        for col in self.table.columns:
-            col.values = [col.values[i] for i in row_index]
+    def nrows(self) -> int:
+        return self.table.nrows()
+
+    def select_rows(self, indices: list[int]) -> FullTable:
+        """Select a subset of rows based on a boolean mask"""
+        return FullTable(
+            table=self.table.select_rows(indices),
+            context=self.context,
+            links=Matrix([self.links.data[i] for i in indices]),
+        )
 
     def remove_empty_links(self) -> Self:
         return self.__class__(
@@ -310,3 +324,39 @@ def get_friendly_fs_id(id: str) -> str:
 
         raise NotImplementedError()
     return slugify(id.replace("/", "_"), lowercase=False).replace("-", "_")
+
+
+class SampleableTable(Protocol):
+    def nrows(self) -> int:
+        ...
+
+    def select_rows(self, indices: list[int]) -> Self:
+        ...
+
+
+ST = TypeVar("ST", bound=SampleableTable, covariant=True)
+
+
+def sample_table_data(
+    examples: Sequence[Example[ST]], n_rows: int, seed: Optional[int] = None
+) -> Sequence[Example[ST]]:
+    """Sample data from each table in examples.
+
+    Args:
+        examples: list of examples
+        n_rows: number of rows to sample per table
+        seed: random seed
+    """
+    rng = random.Random(seed)
+    new_exs = []
+    for ex in examples:
+        tbl_nrows = ex.table.nrows()
+        if tbl_nrows <= n_rows:
+            new_exs.append(ex)
+        else:
+            indices = rng.sample(range(tbl_nrows), n_rows)
+            new_exs.append(
+                Example(id=ex.id, sms=ex.sms, table=ex.table.select_rows(indices))
+            )
+
+    return new_exs
