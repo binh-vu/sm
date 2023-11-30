@@ -8,7 +8,7 @@ from sm.namespaces.wikidata import WikidataNamespace
 
 class KGName(str, Enum):
     Wikidata = "wikidata"
-    DBpedia = "dbpedia"
+    Generic = "generic"
 
 
 registered_kgns: dict[str, KnowledgeGraphNamespace] = {
