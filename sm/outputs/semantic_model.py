@@ -14,8 +14,10 @@ from IPython import get_ipython
 from IPython.display import display
 from PIL import Image
 from rdflib.namespace import RDFS
+
 from sm.misc.bijection import Bijection
 from sm.misc.funcs import auto_wrap, group_by
+from sm.namespaces.namespace import Namespace
 
 
 @dataclass
@@ -367,6 +369,45 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
         with open(infile, "rb") as f:
             record = orjson.loads(f.read())
             return SemanticModel.from_dict(record)
+
+    @staticmethod
+    def from_yaml_dict(record: dict, ns: Namespace):
+        """Parse the semantic model from specific yaml format."""
+        sm = SemanticModel()
+        id2node = {}
+        for u in record["nodes"]:
+            uid = u.pop("id")
+            if "col_index" in u:
+                id2node[uid] = sm.add_node(DataNode(**u))
+            elif "uri" in u:
+                id2node[uid] = sm.add_node(
+                    ClassNode(
+                        abs_uri=ns.get_abs_uri(u["uri"]),
+                        rel_uri=u["uri"],
+                        approximation=u.get("approximation", False),
+                        readable_label=u.get("readable_label", None),
+                    )
+                )
+            else:
+                lnode = LiteralNode(
+                    value=u["value"],
+                    readable_label=u.get("readable_label", None),
+                    is_in_context=u.get("is_in_context", False),
+                    datatype=LiteralNodeDataType(u.get("datatype", "string")),
+                )
+                id2node[uid] = sm.add_node(lnode)
+        for e in record["edges"]:
+            source, predicate, target = e.split("---")
+            assert sm.has_node(id2node[source]) and sm.has_node(id2node[target])
+            sm.add_edge(
+                Edge(
+                    source=id2node[source],
+                    target=id2node[target],
+                    abs_uri=ns.get_abs_uri(predicate),
+                    rel_uri=predicate,
+                )
+            )
+        return sm
 
     def add_readable_label(
         self, fn: Callable[[Union[ClassNode, LiteralNode, Edge]], None]
