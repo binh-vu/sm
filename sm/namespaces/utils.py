@@ -12,7 +12,7 @@ class KGName(str, Enum):
 
 
 registered_kgns: dict[str, KnowledgeGraphNamespace] = {
-    KGName.Wikidata: WikidataNamespace.create()
+    KGName.Wikidata: WikidataNamespace.create(),
 }
 
 

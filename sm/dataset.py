@@ -5,6 +5,7 @@ import shutil
 from contextlib import contextmanager
 from dataclasses import dataclass
 from hashlib import md5
+from io import BytesIO, StringIO
 from operator import attrgetter
 from pathlib import Path
 from typing import (
@@ -22,16 +23,22 @@ from zipfile import Path as ZipPath
 from zipfile import ZipFile
 
 import orjson
-from serde import json
+import pandas as pd
+from ruamel.yaml import YAML
 from slugify import slugify
 from typing_extensions import Self
 
+import serde.csv
+import serde.yaml
+from serde import json
 from sm.inputs.prelude import ColumnBasedTable, Context, Link
 from sm.misc.funcs import batch
 from sm.misc.matrix import Matrix
+from sm.namespaces.namespace import Namespace
 from sm.outputs.semantic_model import SemanticModel
 
 T = TypeVar("T", covariant=True)
+T1 = TypeVar("T1")
 
 
 @dataclass
@@ -39,6 +46,9 @@ class Example(Generic[T]):
     id: str
     sms: list[SemanticModel]
     table: T
+
+    def replace_table(self, table: T1) -> Example[T1]:
+        return Example(id=self.id, sms=self.sms, table=table)
 
 
 @dataclass
@@ -137,31 +147,62 @@ class Dataset:
 
         descriptions (containing semantic descriptions of tables)
         ├── <table_fs_id>
-        │   ├── version.01.json
-        │   ├── version.02.json
+        │   ├── version.01[.json|.yml]
+        │   ├── version.02[.json|.yml]
         │   └── ...
             or
-        ├── <table_fs_id>.json
+        ├── <table_fs_id>[.json|.yml]
         ├── ...
         tables (containing list of tables, the type of table depends on )
-        ├── <table_fs_id>.json[.gz|.bz2|.lz4]
+        ├── <table_fs_id>[.json|.csv|.xlsx][.gz|.bz2|.lz4]
         ├── ...
 
         We also support compressing formats such as .zip.
         descriptions
         ├── part-<num>.zip (no nested version folders)
-        │   ├── <table_fs_id>.json
+        │   ├── <table_fs_id>[.json|.yml]
         |   |   ...
         tables
         ├── part-<num>.zip
-        │   ├── <table_fs_id>.json
+        │   ├── <table_fs_id>[.json|.csv|.xlsx]
         |   |   ...
+
+        The description can be specified in either json or yaml format. For more information on
+        how the semantic models are deserialized from the format, checkout the corresponding
+        deserialization functions.
 
         Args:
             data_dir:
 
         Returns:
         """
+
+        def deser_table(table_id: str, data: bytes, ext: str):
+            if ext == ".json":
+                return FullTable.from_dict(orjson.loads(data))
+            if ext == ".csv":
+                column_based_table = ColumnBasedTable.from_dataframe(
+                    pd.read_csv(BytesIO(data)),
+                    table_id=table_id,
+                )
+                return FullTable(
+                    table=column_based_table,
+                    context=Context(),
+                    links=Matrix.default(column_based_table.shape(), list),
+                )
+            if ext == ".xlsx":
+                column_based_table = ColumnBasedTable.from_dataframe(
+                    pd.read_excel(BytesIO(data)),
+                    table_id=table_id,
+                )
+                return FullTable(
+                    table=column_based_table,
+                    context=Context(),
+                    links=Matrix.default(column_based_table.shape(), list),
+                )
+
+            raise ValueError(f"Unknown file type: {ext}")
+
         examples = []
         with self._open() as root:
             descdir = self.description_dir(root)
@@ -172,9 +213,9 @@ class Dataset:
                 if infile.name.startswith(".") or len(suffixes) == 0:
                     continue
 
-                if suffixes[0] == ".json":
+                if suffixes[-1] != ".zip":
                     example_id = infile.name[: -sum(len(x) for x in suffixes)]
-                    table = FullTable.from_dict(orjson.loads(infile.read_bytes()))
+                    table = deser_table(example_id, infile.read_bytes(), suffixes[0])
 
                     if descdir.exists():
                         if (descdir / example_id).exists():
@@ -185,19 +226,31 @@ class Dataset:
                             assert desc_file is not None
                         else:
                             desc_file = descdir / f"{example_id}.json"
-                            assert desc_file.exists()
+                            if not desc_file.exists():
+                                desc_file = descdir / f"{example_id}.yml"
+                                assert desc_file.exists()
 
-                        raw_sms = orjson.loads(desc_file.read_bytes())
-                        sms = [SemanticModel.from_dict(sm) for sm in raw_sms]
+                        if desc_file.name.endswith(".json"):
+                            raw_sms = orjson.loads(desc_file.read_bytes())
+                            sms = [SemanticModel.from_dict(sm) for sm in raw_sms]
+                        else:
+                            yaml = YAML()
+                            raw = yaml.load(BytesIO(desc_file.read_bytes()))
+                            ns = Namespace.from_prefix2ns(raw["prefixes"])
+                            sms = [
+                                SemanticModel.from_yaml_dict(sm, ns)
+                                for sm in raw["models"]
+                            ]
                     else:
                         sms = []
 
                     examples.append(
                         Example(id=table.table.table_id, sms=sms, table=table)
                     )
-                elif infile.name.endswith(".zip"):
+                else:
                     assert (
-                        isinstance(infile, Path)
+                        infile.name.endswith(".zip")
+                        and isinstance(infile, Path)
                         and isinstance(descdir, Path)
                         and not self.is_zip_file()
                     ), "Must not be a zip file"
@@ -209,7 +262,9 @@ class Dataset:
 
                             table_id = Path(file.filename).stem
                             with zf.open(file, mode="r") as f:
-                                table = FullTable.from_dict(orjson.loads(f.read()))
+                                table = deser_table(
+                                    table_id, f.read(), Path(file.filename).suffixes[0]
+                                )
                             part[table_id] = table
 
                     if descdir.exists():
