@@ -99,7 +99,7 @@ class ColumnBasedTable:
     def from_dataframe(df: pd.DataFrame, table_id: str):
         columns = []
         for ci, c in enumerate(df.columns):
-            values = [r[ci] for ri, r in df.iterrows()]
+            values = [r.iloc[ci] for ri, r in df.iterrows()]
             column = Column(ci, c, values)
             columns.append(column)
         return ColumnBasedTable(table_id, columns)
