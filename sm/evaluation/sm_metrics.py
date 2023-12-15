@@ -4,28 +4,13 @@
 import math
 import os
 from dataclasses import dataclass
-from itertools import permutations, chain
-from typing import (
-    Dict,
-    Sequence,
-    Tuple,
-    List,
-    Set,
-    Optional,
-    Callable,
-    Generator,
-)
+from itertools import chain, permutations
+from typing import Callable, Dict, Generator, List, Optional, Sequence, Set, Tuple
 
 from loguru import logger
-from pyrsistent import pvector, PVector
+from pyrsistent import PVector, pvector
 from sm.evaluation.utils import PrecisionRecallF1
-
-from sm.outputs.semantic_model import (
-    SemanticModel,
-    ClassNode,
-    DataNode,
-    LiteralNode,
-)
+from sm.outputs.semantic_model import ClassNode, DataNode, LiteralNode, SemanticModel
 
 """
 Compute precision, recall and f1 score of the semantic model according to Mohsen paper.
@@ -598,6 +583,8 @@ def precision_recall_f1(
     pred_sm: "SemanticModel",
     scoring_fn: Optional[ScoringFn] = None,
     debug_dir: Optional[str] = None,
+    soft_permutation_threshold: int = 50000,
+    hard_permutation_threshold: int = 1000000,
 ) -> SmPrecisionRecallF1Output:
     if scoring_fn is None:
         scoring_fn = ScoringFn()
@@ -629,13 +616,13 @@ def precision_recall_f1(
     )
 
     # TODO: remove debugging code or change to logging
-    if n_permutations > 50000:
+    if n_permutations > soft_permutation_threshold:
         logger.info("Number of permutation is: {}", n_permutations)
 
-    if n_permutations > 1000000:
+    if n_permutations > hard_permutation_threshold:
         if debug_dir is not None:
-            gold_sm.draw(os.path.join(debug_dir, "/gold.png"))
-            pred_sm.draw(os.path.join(debug_dir, "/pred.png"))
+            gold_sm.draw(os.path.join(debug_dir, "gold.png"))
+            pred_sm.draw(os.path.join(debug_dir, "pred.png"))
         logger.error(
             "Permutation explosion: got {} combinations from {} pair groups",
             n_permutations,
@@ -644,7 +631,7 @@ def precision_recall_f1(
         for dependent_groups in list_of_dependent_groups:
             logger.info("- {}", dependent_groups.pair_groups)
         raise PermutationExplosion(
-            "Cannot run evaluation because number of permutation is too high."
+            f"Cannot run evaluation because number of permutation is too high: {n_permutations}."
         )
 
     for dependent_groups in list_of_dependent_groups:
