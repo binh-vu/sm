@@ -26,10 +26,19 @@ class SemanticType:
     predicate_abs_uri: str
     class_rel_uri: str
     predicate_rel_uri: str
+    qualifier_abs_uri: Optional[str]
+    qualifier_rel_uri: Optional[str]
 
     @property
     def label(self):
-        return (self.class_rel_uri, self.predicate_rel_uri)
+        if self.qualifier_abs_uri is None:
+            return (self.class_rel_uri, self.predicate_rel_uri)
+        else:
+            return (
+                self.class_rel_uri,
+                self.predicate_rel_uri,
+                self.qualifier_rel_uri,
+            )
 
     def is_entity_type(self) -> bool:
         """Telling if this semantic type is for entity column"""
@@ -39,7 +48,7 @@ class SemanticType:
         }
 
     def __hash__(self):
-        return hash((self.class_abs_uri, self.predicate_abs_uri))
+        return hash((self.class_abs_uri, self.predicate_abs_uri, self.qualifier_abs_uri))
 
     def __eq__(self, other):
         if not isinstance(other, SemanticType):
@@ -48,10 +57,14 @@ class SemanticType:
         return (
             self.class_abs_uri == other.class_abs_uri
             and self.predicate_abs_uri == other.predicate_abs_uri
+            and self.qualifier_abs_uri == other.qualifier_abs_uri
         )
 
     def __str__(self):
-        return f"{self.class_rel_uri}--{self.predicate_rel_uri}"
+        if self.qualifier_abs_uri is None:
+            return f"{self.class_rel_uri}--{self.predicate_rel_uri}"
+        else:
+            return f"{self.class_rel_uri}--{self.predicate_rel_uri}--{self.qualifier_rel_uri}"
 
     def __repr__(self):
         return f"SType({self})"
@@ -208,24 +221,47 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
             del self.value2id[node.value]
         return super().remove_node(node_id)
 
-    def get_semantic_types_of_column(self, col_index: int) -> List[SemanticType]:
+    def get_semantic_types_of_column(self, col_index: int, statement_uri: Optional[str] = None) -> List[SemanticType]:
+        """Get semantic types (class & property) of a column. 
+        
+        Args:
+            col_index: column index
+            statement_uri: a special class to indicate that the column is part of an n-ary relationship (e.g., Wikidata statement)
+        """
         dnode = self.get_data_node(col_index)
         sem_types = set()
         for e in self.in_edges(dnode.id):
             u = self.get_node(e.source)
             assert isinstance(u, ClassNode)
-            sem_types.add(SemanticType(u.abs_uri, e.abs_uri, u.rel_uri, e.rel_uri))
+            if u.abs_uri == statement_uri:
+                # it's part of an n-ary relationship u -> prop -> statement -> qual -> v
+                # if we have an n-ary relationship, a statement should only have one incoming edge
+                pe, = self.in_edges(u.id)
+                pu = self.get_node(pe.source)
+                assert isinstance(pu, ClassNode) and pu.abs_uri != statement_uri
+
+                if pe.abs_uri == e.abs_uri:
+                    # main statement property -- do not need to store qualifier
+                    sem_types.add(SemanticType(pu.abs_uri, pe.abs_uri, pu.rel_uri, pe.rel_uri))
+                else:
+                    # qualifier property
+                    sem_types.add(SemanticType(pu.abs_uri, pe.abs_uri, pu.rel_uri, pe.rel_uri, e.abs_uri, e.rel_uri))
+            else:
+                sem_types.add(SemanticType(u.abs_uri, e.abs_uri, u.rel_uri, e.rel_uri))
         return list(sem_types)
 
-    def get_semantic_types(self) -> Set[SemanticType]:
+    def get_semantic_types(self, statement_uri: Optional[str] = None) -> Set[SemanticType]:
+        """Get semantic types (class & property) of all columns. 
+        
+        Args:
+            col_index: column index
+            statement_uri: a special class to indicate that the column is part of an n-ary relationship (e.g., Wikidata statement)
+        """
         sem_types = set()
-        for e in self.iter_edges():
-            u = self.get_node(e.source)
-            assert isinstance(u, ClassNode)
-            if isinstance(self.get_node(e.target), ClassNode):
+        for ci, cid in enumerate(self.column2id):
+            if cid == -1:
                 continue
-
-            sem_types.add(SemanticType(u.abs_uri, e.abs_uri, u.rel_uri, e.rel_uri))
+            sem_types.update(self.get_semantic_types_of_column(ci, statement_uri))
         return sem_types
 
     def is_equal(self, sm: "SemanticModel") -> bool:
