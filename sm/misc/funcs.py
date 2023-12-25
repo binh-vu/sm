@@ -311,6 +311,15 @@ def create_group_by_index(
     return odict
 
 
+def make_dict(iter: Iterable[V], key: Callable[[V], K]) -> dict[K, V]:
+    odict = {}
+    for item in iter:
+        k = key(item)
+        assert k not in odict
+        odict[k] = item
+    return odict
+
+
 def datasize(num, suffix="B"):
     """Get human friendly file size
     https://gist.github.com/cbwar/d2dfbc19b140bd599daccbe0fe925597#gistcomment-2845059

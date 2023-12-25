@@ -14,7 +14,6 @@ from IPython import get_ipython
 from IPython.display import display
 from PIL import Image
 from rdflib.namespace import RDFS
-
 from sm.misc.bijection import Bijection
 from sm.misc.funcs import auto_wrap, group_by
 from sm.namespaces.namespace import Namespace
@@ -26,8 +25,8 @@ class SemanticType:
     predicate_abs_uri: str
     class_rel_uri: str
     predicate_rel_uri: str
-    qualifier_abs_uri: Optional[str]
-    qualifier_rel_uri: Optional[str]
+    qualifier_abs_uri: Optional[str] = None
+    qualifier_rel_uri: Optional[str] = None
 
     @property
     def label(self):
@@ -48,7 +47,9 @@ class SemanticType:
         }
 
     def __hash__(self):
-        return hash((self.class_abs_uri, self.predicate_abs_uri, self.qualifier_abs_uri))
+        return hash(
+            (self.class_abs_uri, self.predicate_abs_uri, self.qualifier_abs_uri)
+        )
 
     def __eq__(self, other):
         if not isinstance(other, SemanticType):
@@ -68,6 +69,20 @@ class SemanticType:
 
     def __repr__(self):
         return f"SType({self})"
+
+    def to_dict(self):
+        return {
+            "class_abs_uri": self.class_abs_uri,
+            "predicate_abs_uri": self.predicate_abs_uri,
+            "class_rel_uri": self.class_rel_uri,
+            "predicate_rel_uri": self.predicate_rel_uri,
+            "qualifier_abs_uri": self.qualifier_abs_uri,
+            "qualifier_rel_uri": self.qualifier_rel_uri,
+        }
+
+    @classmethod
+    def from_dict(cls, obj: dict):
+        return cls(**obj)
 
 
 @dataclass(eq=True)
@@ -221,9 +236,11 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
             del self.value2id[node.value]
         return super().remove_node(node_id)
 
-    def get_semantic_types_of_column(self, col_index: int, statement_uri: Optional[str] = None) -> List[SemanticType]:
-        """Get semantic types (class & property) of a column. 
-        
+    def get_semantic_types_of_column(
+        self, col_index: int, statement_uri: Optional[str] = None
+    ) -> List[SemanticType]:
+        """Get semantic types (class & property) of a column.
+
         Args:
             col_index: column index
             statement_uri: a special class to indicate that the column is part of an n-ary relationship (e.g., Wikidata statement)
@@ -236,23 +253,44 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
             if u.abs_uri == statement_uri:
                 # it's part of an n-ary relationship u -> prop -> statement -> qual -> v
                 # if we have an n-ary relationship, a statement should only have one incoming edge
-                pe, = self.in_edges(u.id)
+                (pe,) = self.in_edges(u.id)
                 pu = self.get_node(pe.source)
-                assert isinstance(pu, ClassNode) and pu.abs_uri != statement_uri
 
+                if not isinstance(pu, ClassNode):
+                    # this can happen to n-ary relationship, (participate & rank)
+                    assert (
+                        isinstance(pu, LiteralNode)
+                        and pu.datatype == LiteralNodeDataType.Entity
+                    )
+                    continue
+
+                assert pu.abs_uri != statement_uri
                 if pe.abs_uri == e.abs_uri:
                     # main statement property -- do not need to store qualifier
-                    sem_types.add(SemanticType(pu.abs_uri, pe.abs_uri, pu.rel_uri, pe.rel_uri))
+                    sem_types.add(
+                        SemanticType(pu.abs_uri, pe.abs_uri, pu.rel_uri, pe.rel_uri)
+                    )
                 else:
                     # qualifier property
-                    sem_types.add(SemanticType(pu.abs_uri, pe.abs_uri, pu.rel_uri, pe.rel_uri, e.abs_uri, e.rel_uri))
+                    sem_types.add(
+                        SemanticType(
+                            pu.abs_uri,
+                            pe.abs_uri,
+                            pu.rel_uri,
+                            pe.rel_uri,
+                            e.abs_uri,
+                            e.rel_uri,
+                        )
+                    )
             else:
                 sem_types.add(SemanticType(u.abs_uri, e.abs_uri, u.rel_uri, e.rel_uri))
         return list(sem_types)
 
-    def get_semantic_types(self, statement_uri: Optional[str] = None) -> Set[SemanticType]:
-        """Get semantic types (class & property) of all columns. 
-        
+    def get_semantic_types(
+        self, statement_uri: Optional[str] = None
+    ) -> Set[SemanticType]:
+        """Get semantic types (class & property) of all columns.
+
         Args:
             col_index: column index
             statement_uri: a special class to indicate that the column is part of an n-ary relationship (e.g., Wikidata statement)
