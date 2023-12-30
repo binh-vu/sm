@@ -54,6 +54,31 @@ def assert_not_null(x: Optional[V]) -> V:
     return x
 
 
+def assert_one_item(lst: list[V]) -> V:
+    assert len(lst) == 1
+    return lst[0]
+
+
+def assert_desc_sorted(lst: list[V], value: Callable[[V], float | int]):
+    if len(lst) == 0:
+        return lst
+
+    v0 = value(lst[0])
+    for i in range(1, len(lst)):
+        vi = value(lst[i])
+        assert v0 >= vi, (i, v0, vi)
+        v0 = vi
+
+    return lst
+
+
+def get_max_sorted_desc(lst: list[V], value: Callable[[V], float | int]) -> V:
+    assert len(lst) >= 1
+    v0 = value(lst[0])
+    assert all(v0 > value(x) for x in lst[1:])
+    return lst[0]
+
+
 def is_not_null(x: Optional[V]) -> TypeGuard[V]:
     return x is not None
 

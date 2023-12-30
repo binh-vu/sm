@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+from rdflib import RDFS
 from sm.namespaces.namespace import KnowledgeGraphNamespace, OutOfNamespace
 from sm.namespaces.prefix_index import PrefixIndex
 
@@ -32,8 +33,8 @@ class WikidataNamespace(KnowledgeGraphNamespace):
     )
     IS_WIKIDATA_URI = re.compile(r"^https?:\/\/www\.wikidata\.org\/")
 
-    @staticmethod
-    def create():
+    @classmethod
+    def create(cls):
         prefix2ns = {
             "p": "http://www.wikidata.org/prop/",
             "pq": "http://www.wikidata.org/prop/qualifier/",
@@ -61,7 +62,7 @@ class WikidataNamespace(KnowledgeGraphNamespace):
         assert len(ns2prefix) == len(prefix2ns), "Duplicated namespaces"
         prefix_index = PrefixIndex.create(ns2prefix)
 
-        return WikidataNamespace(prefix2ns, ns2prefix, prefix_index)
+        return cls(prefix2ns, ns2prefix, prefix_index)
 
     def __init__(
         self,
@@ -126,3 +127,17 @@ class WikidataNamespace(KnowledgeGraphNamespace):
 
     def has_encrypted_name(self, uri: str):
         return self.IS_WIKIDATA_URI.match(uri) is not None
+
+
+class ExtendedWikidataNamespace(WikidataNamespace):
+    extra_properties = {str(RDFS.label)}
+
+    def uri_to_id(self, uri: str) -> str:
+        if uri in self.extra_properties:
+            return uri
+        return super().uri_to_id(uri)
+
+    def id_to_uri(self, id: str):
+        if id in self.extra_properties:
+            return id
+        return super().id_to_uri(id)

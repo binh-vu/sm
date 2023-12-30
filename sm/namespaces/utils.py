@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 
 from sm.namespaces.namespace import KnowledgeGraphNamespace
-from sm.namespaces.wikidata import WikidataNamespace
+from sm.namespaces.wikidata import ExtendedWikidataNamespace
 
 
 class KGName(str, Enum):
@@ -12,7 +12,7 @@ class KGName(str, Enum):
 
 
 registered_kgns: dict[str, KnowledgeGraphNamespace] = {
-    KGName.Wikidata: WikidataNamespace.create(),
+    KGName.Wikidata: ExtendedWikidataNamespace.create(),
 }
 
 

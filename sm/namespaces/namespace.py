@@ -181,3 +181,45 @@ class DefaultKnowledgeGraphNamespace(KnowledgeGraphNamespace):
 
     def has_encrypted_name(self, uri: str):
         return False
+
+
+class ChainedKnowledgeGraphNamespace(KnowledgeGraphNamespace):
+    def __init__(self, ns1: KnowledgeGraphNamespace, ns2: KnowledgeGraphNamespace):
+        self.ns1 = ns1
+        self.ns2 = ns2
+
+    @property
+    def entity_id(self):
+        return self.ns2.entity_id
+
+    @property
+    def entity_uri(self):
+        return self.ns2.entity_uri
+
+    @property
+    def entity_label(self):
+        return self.ns2.entity_label
+
+    @property
+    def statement_uri(self):
+        return self.ns2.statement_uri
+
+    @property
+    def main_namespaces(self):
+        return self.ns1.main_namespaces + self.ns2.main_namespaces
+
+    def is_id(self, uri_or_id: str) -> bool:
+        return self.ns1.is_id(uri_or_id) or self.ns2.is_id(uri_or_id)
+
+    def is_uri_in_main_ns(self, uri: str) -> bool:
+        return self.ns1.is_uri_in_main_ns(uri) or self.ns2.is_uri_in_main_ns(uri)
+
+    def uri_to_id(self, uri: str) -> str:
+        if self.ns1.is_uri_in_main_ns(uri):
+            return self.ns1.uri_to_id(uri)
+        return self.ns2.uri_to_id(uri)
+
+    def id_to_uri(self, id: str) -> str:
+        if self.ns1.is_id(id):
+            return self.ns1.id_to_uri(id)
+        return self.ns2.id_to_uri(id)
