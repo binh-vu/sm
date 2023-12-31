@@ -4,7 +4,6 @@ from collections import OrderedDict, defaultdict
 from typing import List, Optional, Sequence, Tuple, Union
 
 import pandas as pd
-
 from sm.inputs.column import Column
 
 
@@ -23,8 +22,15 @@ class ColumnBasedTable:
             self._df = self.as_dataframe()
         return self._df
 
-    def keep_columns(self, columns: List[int]):
-        return ColumnBasedTable(self.table_id, [self.index2columns[c] for c in columns])
+    def keep_columns(self, columns: List[int], reindex: bool = False):
+        if reindex:
+            newcols = []
+            for i, c in enumerate(columns):
+                tmp = self.index2columns[c]
+                newcols.append(Column(i, tmp.name, tmp.values))
+        else:
+            newcols = [self.index2columns[c] for c in columns]
+        return ColumnBasedTable(self.table_id, newcols)
 
     def shape(self) -> Tuple[int, int]:
         """Get shape of table: (number of rows, number of columns)"""

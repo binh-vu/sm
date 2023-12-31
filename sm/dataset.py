@@ -24,13 +24,13 @@ from zipfile import ZipFile
 
 import orjson
 import pandas as pd
+import serde.csv
+import serde.yaml
 from ruamel.yaml import YAML
+from serde import json
 from slugify import slugify
 from typing_extensions import Self
 
-import serde.csv
-import serde.yaml
-from serde import json
 from sm.inputs.prelude import ColumnBasedTable, Context, Link
 from sm.misc.funcs import batch
 from sm.misc.matrix import Matrix
@@ -66,6 +66,13 @@ class FullTable:
             table=self.table.select_rows(indices),
             context=self.context,
             links=Matrix([self.links.data[i] for i in indices]),
+        )
+
+    def keep_columns(self, columns: list[int], reindex: bool = False) -> FullTable:
+        return FullTable(
+            table=self.table.keep_columns(columns, reindex),
+            context=self.context,
+            links=Matrix([[row[ci] for ci in columns] for row in self.links]),
         )
 
     def remove_empty_links(self) -> Self:
