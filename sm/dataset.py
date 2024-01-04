@@ -29,13 +29,13 @@ import serde.yaml
 from ruamel.yaml import YAML
 from serde import json
 from slugify import slugify
-from typing_extensions import Self
-
 from sm.inputs.prelude import ColumnBasedTable, Context, Link
 from sm.misc.funcs import batch
 from sm.misc.matrix import Matrix
 from sm.namespaces.namespace import Namespace
 from sm.outputs.semantic_model import SemanticModel
+from tqdm.auto import tqdm
+from typing_extensions import Self
 
 T = TypeVar("T", covariant=True)
 T1 = TypeVar("T1")
@@ -149,7 +149,7 @@ class Dataset:
     def is_zip_file(self):
         return self.location.name.endswith(".zip")
 
-    def load(self) -> list[Example[FullTable]]:
+    def load(self, verbose: bool = False) -> list[Example[FullTable]]:
         """Load dataset from a folder. Assuming the following structure:
 
         descriptions (containing semantic descriptions of tables)
@@ -215,7 +215,9 @@ class Dataset:
             descdir = self.description_dir(root)
             tabledir = self.table_dir(root)
 
-            for infile in sorted(tabledir.iterdir(), key=attrgetter("name")):
+            for infile in tqdm(
+                sorted(tabledir.iterdir(), key=attrgetter("name")), disable=not verbose
+            ):
                 suffixes = Path(infile.name).suffixes
                 if infile.name.startswith(".") or len(suffixes) == 0:
                     continue
@@ -290,7 +292,9 @@ class Dataset:
                                     ]
                                     lst.append(
                                         Example(
-                                            id=table_id, sms=sms, table=part[table_id]
+                                            id=part[table_id].table.table_id,
+                                            sms=sms,
+                                            table=part[table_id],
                                         )
                                     )
                     else:
