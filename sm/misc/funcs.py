@@ -367,6 +367,26 @@ def datasize(num, suffix="B"):
     )
 
 
+class IntegerEncoder:
+    def __init__(self):
+        self.encoding: dict[str | tuple[str, ...], int] = {}
+        self.values: list[int] = []
+
+    def append(self, val: str | tuple[str, ...]):
+        if val not in self.encoding:
+            self.encoding[val] = len(self.encoding)
+        self.values.append(self.encoding[val])
+
+    def get_encoder_as_list(self) -> list:
+        counter = 0
+        output = []
+        for key, val in self.encoding.items():
+            assert val == counter, (val, counter)
+            counter += 1
+            output.append(key)
+        return output
+
+
 class ParallelMapFnWrapper:
     def __init__(self, fn: Callable, ignore_error=False):
         self.fn = fn
