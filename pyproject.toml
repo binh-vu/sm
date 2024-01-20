@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sem-desc"
-version = "6.7.1"
+version = "6.7.2"
 description = "Package providing basic functionalities for the semantic modeling problem"
 authors = ["Binh Vu <binh@toan2.com>"]
 license = "MIT"
@@ -26,7 +26,7 @@ ujson = "^5.5.0"
 colorama = ">=0.4.4"
 graph-wrapper = "^1.7.0"
 rdflib = "^6.1.1"
-serde2 = { version = "^1.6.0", extras = ["all"] }
+serde2 = { version = "^1.7.0", extras = ["all"] }
 rsoup = "^3.0.1"
 Deprecated = "^1.2.13"
 ray = { version = "^2.0.1", extras = ["default"] }
