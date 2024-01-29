@@ -839,7 +839,7 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
         self,
         colorful: bool = True,
         ignore_isolated_nodes: bool = False,
-        env: Literal["terminal", "browser"] = "terminal",
+        env: Literal["terminal", "browser", "notebook"] = "terminal",
         _cache={},
     ) -> Optional[str]:
         """Print the semantic model to the environment if possible. When env is browser, users have to print it manually"""
@@ -934,4 +934,12 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
         if env == "terminal":
             print("".join(logs))
         else:
-            return "<pre>" + "".join(logs) + "</pre>"
+            html = "<pre>" + "".join(logs) + "</pre>"
+            if env == "browser":
+                return html
+            else:
+                assert env == "notebook"
+                from IPython.display import display
+                from ipywidgets import HTML
+
+                display(HTML(html))
