@@ -92,7 +92,11 @@ def ray_map(
                     newarg.append(ray.get(x))
                 else:
                     newarg.append(x)
-            output.append(localfn(*newarg))
+            try:
+                output.append(localfn(*newarg))
+            except:
+                logger.error("ray_map failed at item index {}", len(output))
+                raise
         return output
 
     ray_init(**ray_initargs)
@@ -126,13 +130,21 @@ def ray_map(
                 )
                 pbar.update(len(ready_refs))
                 for ref in ready_refs:
-                    output[ref2index[ref]] = ray.get(ref)
+                    try:
+                        output[ref2index[ref]] = ray.get(ref)
+                    except:
+                        logger.error("ray_map failed at item index {}", ref2index[ref])
+                        raise
 
         while len(notready_refs) > 0:
             ready_refs, notready_refs = ray.wait(notready_refs, timeout=poll_interval)
             pbar.update(len(ready_refs))
             for ref in ready_refs:
-                output[ref2index[ref]] = ray.get(ref)
+                try:
+                    output[ref2index[ref]] = ray.get(ref)
+                except:
+                    logger.error("ray_map failed at item index {}", ref2index[ref])
+                    raise
 
         if auto_shutdown:
             ray.shutdown()
@@ -172,7 +184,11 @@ def ray_actor_map(
                     newarg.append(ray.get(x))
                 else:
                     newarg.append(x)
-            output.append(actor_fns[i % len(actors)](*newarg))
+            try:
+                output.append(actor_fns[i % len(actors)](*newarg))
+            except:
+                logger.error("ray_actor_map failed at item index {}", len(output))
+                raise
             i += 1
         return output
 
@@ -206,13 +222,25 @@ def ray_actor_map(
                 )
                 pbar.update(len(ready_refs))
                 for ref in ready_refs:
-                    output[ref2index[ref]] = ray.get(ref)
+                    try:
+                        output[ref2index[ref]] = ray.get(ref)
+                    except:
+                        logger.error(
+                            "ray_actor_map failed at item index {}", ref2index[ref]
+                        )
+                        raise
 
         while len(notready_refs) > 0:
             ready_refs, notready_refs = ray.wait(notready_refs, timeout=poll_interval)
             pbar.update(len(ready_refs))
             for ref in ready_refs:
-                output[ref2index[ref]] = ray.get(ref)
+                try:
+                    output[ref2index[ref]] = ray.get(ref)
+                except:
+                    logger.error(
+                        "ray_actor_map failed at item index {}", ref2index[ref]
+                    )
+                    raise
 
         if auto_shutdown:
             ray.shutdown()
