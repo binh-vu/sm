@@ -513,8 +513,11 @@ def import_func(func_ident: str) -> Callable:
             importlib.import_module(module + "." + cls)
             module = module + "." + cls
             cls = None
-        except ModuleNotFoundError:
-            pass
+        except ModuleNotFoundError as e:
+            if e.name == (module + "." + cls):
+                pass
+            else:
+                raise
 
     module = importlib.import_module(module)
     if cls is not None:
