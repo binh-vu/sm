@@ -54,6 +54,11 @@ def assert_not_null(x: Optional[V]) -> V:
     return x
 
 
+def assert_all_item_not_null(lst: list[Optional[V]]) -> list[V]:
+    assert all(v is not None for v in lst)
+    return lst  # type: ignore
+
+
 def assert_one_item(lst: list[V]) -> V:
     assert len(lst) == 1
     return lst[0]
