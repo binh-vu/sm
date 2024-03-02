@@ -37,18 +37,15 @@ def ray_init(**kwargs):
 
 
 @overload
-def ray_put(val: R, using_ray: Literal[True] = True) -> "ray.ObjectRef[R]":
-    ...
+def ray_put(val: R, using_ray: Literal[True] = True) -> "ray.ObjectRef[R]": ...
 
 
 @overload
-def ray_put(val: R, using_ray: Literal[False]) -> R:
-    ...
+def ray_put(val: R, using_ray: Literal[False]) -> R: ...
 
 
 @overload
-def ray_put(val: R, using_ray: bool) -> Union["ray.ObjectRef[R]", R]:
-    ...
+def ray_put(val: R, using_ray: bool) -> Union["ray.ObjectRef[R]", R]: ...
 
 
 def ray_put(val: R, using_ray: bool = True) -> Union["ray.ObjectRef[R]", R]:
@@ -205,7 +202,7 @@ def ray_actor_map(
 
     n_jobs = len(args_lst)
     with tqdm(total=n_jobs, desc=desc, disable=not verbose) as pbar:
-        output: List[R] = [None] * n_jobs  # type: ignore
+        output: list = [None] * n_jobs
 
         notready_refs = []
         ref2index = {}
