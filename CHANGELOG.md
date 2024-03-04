@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [6.9.0] - 2024-03-03
+
 ### Added
 
 - Added function to remove empty rows from a table
