@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import random
 import shutil
 from contextlib import contextmanager
@@ -28,14 +29,16 @@ import serde.csv
 import serde.yaml
 from ruamel.yaml import YAML
 from serde import json
+from serde.helper import DEFAULT_ORJSON_OPTS, get_open_fn
 from slugify import slugify
+from tqdm.auto import tqdm
+from typing_extensions import Self
+
 from sm.inputs.prelude import ColumnBasedTable, Context, Link
 from sm.misc.funcs import batch
 from sm.misc.matrix import Matrix
 from sm.namespaces.namespace import Namespace
 from sm.outputs.semantic_model import SemanticModel
-from tqdm.auto import tqdm
-from typing_extensions import Self
 
 T = TypeVar("T", covariant=True)
 T1 = TypeVar("T1")
@@ -183,33 +186,6 @@ class Dataset:
 
         Returns:
         """
-
-        def deser_table(table_id: str, data: bytes, ext: str):
-            if ext == ".json":
-                return FullTable.from_dict(orjson.loads(data))
-            if ext == ".csv":
-                column_based_table = ColumnBasedTable.from_dataframe(
-                    pd.read_csv(BytesIO(data)),
-                    table_id=table_id,
-                )
-                return FullTable(
-                    table=column_based_table,
-                    context=Context(),
-                    links=Matrix.default(column_based_table.shape(), list),
-                )
-            if ext == ".xlsx":
-                column_based_table = ColumnBasedTable.from_dataframe(
-                    pd.read_excel(BytesIO(data)),
-                    table_id=table_id,
-                )
-                return FullTable(
-                    table=column_based_table,
-                    context=Context(),
-                    links=Matrix.default(column_based_table.shape(), list),
-                )
-
-            raise ValueError(f"Unknown file type: {ext}")
-
         examples = []
         with self._open() as root:
             descdir = self.description_dir(root)
@@ -224,7 +200,9 @@ class Dataset:
 
                 if suffixes[-1] != ".zip":
                     example_id = infile.name[: -sum(len(x) for x in suffixes)]
-                    table = deser_table(example_id, infile.read_bytes(), suffixes[0])
+                    table = self._deser_table(
+                        example_id, infile.read_bytes(), suffixes[0]
+                    )
 
                     if descdir.exists():
                         if (descdir / example_id).exists():
@@ -271,7 +249,7 @@ class Dataset:
 
                             table_id = Path(file.filename).stem
                             with zf.open(file, mode="r") as f:
-                                table = deser_table(
+                                table = self._deser_table(
                                     table_id, f.read(), Path(file.filename).suffixes[0]
                                 )
                             part[table_id] = table
@@ -313,6 +291,7 @@ class Dataset:
         individual_table_compressed: Optional[Literal["gz", "bz2", "lz4"]] = None,
         batch_compressed: bool = False,
         batch_size: int = 100,
+        table_fmt: Literal["json", "txt"] = "json",
         table_fmt_indent: Literal[0, 2] = 0,
         clean_previous_data: bool = True,
     ):
@@ -340,32 +319,128 @@ class Dataset:
                     tabledir / filename, "w"
                 ) as tzf:
                     for e in bexamples:
-                        ename = get_friendly_fs_id(e.table.table.table_id) + ".json"
+                        ename = (
+                            get_friendly_fs_id(e.table.table.table_id) + f".{table_fmt}"
+                        )
                         dzf.writestr(
                             ename,
                             data=orjson.dumps([sm.to_dict() for sm in e.sms]),
                         )
                         tzf.writestr(
                             ename,
-                            data=orjson.dumps(e.table.to_dict()),
+                            data=self._ser_table(e.table, table_fmt, table_fmt_indent),
                         )
         else:
             for e in examples:
                 filename = get_friendly_fs_id(e.table.table.table_id)
                 (descdir / filename).mkdir(exist_ok=True)
                 compressed_filename = (
-                    filename + f".json.{individual_table_compressed}"
+                    filename + f".{table_fmt}.{individual_table_compressed}"
                     if individual_table_compressed is not None
-                    else filename + ".json"
+                    else filename + f".{table_fmt}"
                 )
                 json.ser(
                     [sm.to_dict() for sm in e.sms],
                     descdir / filename / "version.01.json",
                     indent=2,
                 )
-                json.ser(
-                    e.table, tabledir / compressed_filename, indent=table_fmt_indent
+                with get_open_fn(tabledir / compressed_filename)(
+                    tabledir / compressed_filename, "wb"
+                ) as f:
+                    f.write(self._ser_table(e.table, table_fmt, table_fmt_indent))
+
+    @staticmethod
+    def _deser_table(table_id: str, data: bytes, ext: str) -> FullTable:
+        if ext == ".json":
+            return FullTable.from_dict(orjson.loads(data))
+        if ext == ".csv":
+            column_based_table = ColumnBasedTable.from_dataframe(
+                pd.read_csv(BytesIO(data)),
+                table_id=table_id,
+            )
+            return FullTable(
+                table=column_based_table,
+                context=Context(),
+                links=Matrix.default(column_based_table.shape(), list),
+            )
+        if ext == ".xlsx":
+            column_based_table = ColumnBasedTable.from_dataframe(
+                pd.read_excel(BytesIO(data)),
+                table_id=table_id,
+            )
+            return FullTable(
+                table=column_based_table,
+                context=Context(),
+                links=Matrix.default(column_based_table.shape(), list),
+            )
+        if ext == ".txt":
+            part1_csv, part2_json = data.split(b"\n" + b"-" * 80 + b"\n\n")
+            column_based_table = ColumnBasedTable.from_dataframe(
+                pd.read_csv(BytesIO(part1_csv)),
+                table_id=table_id,
+            )
+            obj = orjson.loads(part2_json)
+            return FullTable(
+                table=column_based_table,
+                context=Context.from_dict(obj["context"]),
+                links=Matrix(
+                    [
+                        [[Link.from_dict(link) for link in cell] for cell in row]
+                        for row in obj["links"]
+                    ]
+                ),
+            )
+
+        raise ValueError(f"Unknown file type: {ext}")
+
+    @staticmethod
+    def _ser_table(
+        table: FullTable,
+        table_fmt: Literal["json", "txt"] = "json",
+        table_fmt_indent: Literal[0, 2] = 0,
+    ):
+        if table_fmt == "json":
+            if table_fmt_indent > 0:
+                orjson_opts = DEFAULT_ORJSON_OPTS | orjson.OPT_INDENT_2
+            else:
+                orjson_opts = DEFAULT_ORJSON_OPTS
+
+            return orjson.dumps(table.to_dict(), option=orjson_opts)
+
+        if table_fmt == "txt":
+            out = StringIO()
+            nrows, ncols = table.table.shape()
+
+            writer = csv.writer(
+                out, delimiter=",", quoting=csv.QUOTE_MINIMAL, lineterminator="\n"
+            )
+            writer.writerow([c.name for c in table.table.columns])
+            for ri in range(nrows):
+                writer.writerow(
+                    [table.table.columns[ci].values[ri] for ci in range(ncols)]
                 )
+
+            out.write("\n" + "-" * 80 + "\n\n")
+            if table_fmt_indent > 0:
+                orjson_opts = DEFAULT_ORJSON_OPTS | orjson.OPT_INDENT_2
+            else:
+                orjson_opts = DEFAULT_ORJSON_OPTS
+
+            out.write(
+                orjson.dumps(
+                    {
+                        "context": table.context.to_dict(),
+                        "links": [
+                            [[link.to_dict() for link in cell] for cell in row]
+                            for row in table.links.data
+                        ],
+                    },
+                    option=orjson_opts,
+                ).decode()
+            )
+            return out.getvalue().encode()
+
+        raise ValueError(f"Unsupported format: {table_fmt}")
 
 
 def get_friendly_fs_id(id: str) -> str:
@@ -393,11 +468,9 @@ def get_friendly_fs_id(id: str) -> str:
 
 
 class SampleableTable(Protocol):
-    def nrows(self) -> int:
-        ...
+    def nrows(self) -> int: ...
 
-    def select_rows(self, indices: list[int]) -> Self:
-        ...
+    def select_rows(self, indices: list[int]) -> Self: ...
 
 
 ST = TypeVar("ST", bound=SampleableTable, covariant=True)
