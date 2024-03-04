@@ -44,6 +44,19 @@ class ColumnBasedTable:
             self.table_id, [col.select_rows(indices) for col in self.columns]
         )
 
+    def remove_empty_rows(self):
+        nrows, ncols = self.shape()
+        select_rows = []
+        for ri in range(nrows):
+            if not all(
+                self.columns[ci].values[ri].strip() == "" for ci in range(ncols)
+            ):
+                select_rows.append(ri)
+
+        if len(select_rows) != nrows:
+            return self.select_rows(select_rows)
+        return self
+
     def ncols(self) -> int:
         return len(self.columns)
 
