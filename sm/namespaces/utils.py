@@ -2,17 +2,20 @@ from __future__ import annotations
 
 from enum import Enum
 
+from sm.namespaces.dbpedia import DBpediaNamespace
 from sm.namespaces.namespace import KnowledgeGraphNamespace
 from sm.namespaces.wikidata import ExtendedWikidataNamespace
 
 
 class KGName(str, Enum):
     Wikidata = "wikidata"
+    DBpedia = "dbpedia"
     Generic = "generic"
 
 
 registered_kgns: dict[str, KnowledgeGraphNamespace] = {
     KGName.Wikidata: ExtendedWikidataNamespace.create(),
+    KGName.DBpedia: DBpediaNamespace.create(),
 }
 
 
