@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.10.1] - 2024-03-12
+
+### Added
+
+- Add `before_shutdown` function to ray map & ray actor map to copy the data stored in shared memory before shutting down the ray cluster to avoid data corruption.
+
 ## [6.10.0] - 2024-03-06
 
 ### Added

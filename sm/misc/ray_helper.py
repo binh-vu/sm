@@ -4,6 +4,7 @@ import sys
 import time
 from pathlib import Path
 from typing import (
+    Any,
     Callable,
     List,
     Literal,
@@ -71,8 +72,14 @@ def ray_map(
     using_ray: bool = True,
     is_func_remote: bool = True,
     remote_options: Optional[dict] = None,
+    before_shutdown: Optional[Callable[[Any], Any]] = None,
     auto_shutdown: bool = False,
 ) -> List[R]:
+    """
+    Args:
+        before_shutdown: if you use numpy arrays, shutdown ray cluster will released the shared memory and thus, may corrupt the arrays later. You should use
+            before_shutdown to copy the data before shutdown. This only applies to the case where using_ray=True && auto_shutdown=True.
+    """
     global ray_initargs
 
     if not using_ray:
@@ -144,6 +151,8 @@ def ray_map(
                     raise
 
         if auto_shutdown:
+            if before_shutdown is not None:
+                output = [before_shutdown(x) for x in output]
             ray.shutdown()
         return output
 
@@ -160,8 +169,14 @@ def ray_actor_map(
     using_ray: bool = True,
     is_actor_remote: bool = True,
     remote_options: Optional[dict] = None,
+    before_shutdown: Optional[Callable[[Any], Any]] = None,
     auto_shutdown: bool = False,
 ):
+    """
+    Args:
+        before_shutdown: if you use numpy arrays, shutdown ray cluster will released the shared memory and thus, may corrupt the arrays later. You should use
+            before_shutdown to copy the data before shutdown. This only applies to the case where using_ray=True && auto_shutdown=True.
+    """
     global ray_initargs
 
     if not using_ray:
@@ -240,6 +255,8 @@ def ray_actor_map(
                     raise
 
         if auto_shutdown:
+            if before_shutdown is not None:
+                output = [before_shutdown(x) for x in output]
             ray.shutdown()
 
         return output
