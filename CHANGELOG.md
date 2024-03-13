@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Add missing prefixes to DBpediaNamespace and main URIs
+
 ## [6.10.1] - 2024-03-12
 
 ### Added
