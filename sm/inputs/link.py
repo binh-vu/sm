@@ -60,7 +60,9 @@ class EntityIdWithScore:
     @staticmethod
     def from_dict(obj: dict) -> EntityIdWithScore:
         return EntityIdWithScore(EntityId.from_dict(obj["id"]), obj["score"])
-
+    
+    def __str__(self):
+        return f"{self.id}: {self.score:.3f}"
 
 WIKIDATA_NIL_ENTITY = EntityId("Q0", KGName.Wikidata)
 

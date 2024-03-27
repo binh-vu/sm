@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Add `__str__` to `EntityIdWithScore` class
+
 ### Fixed
 
 - Add missing prefixes to DBpediaNamespace and main URIs

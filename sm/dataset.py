@@ -31,14 +31,13 @@ from ruamel.yaml import YAML
 from serde import json
 from serde.helper import DEFAULT_ORJSON_OPTS, get_open_fn
 from slugify import slugify
-from tqdm.auto import tqdm
-from typing_extensions import Self
-
 from sm.inputs.prelude import ColumnBasedTable, Context, Link
 from sm.misc.funcs import batch
 from sm.misc.matrix import Matrix
 from sm.namespaces.namespace import Namespace
 from sm.outputs.semantic_model import SemanticModel
+from tqdm.auto import tqdm
+from typing_extensions import Self
 
 T = TypeVar("T", covariant=True)
 T1 = TypeVar("T1")
