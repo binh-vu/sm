@@ -64,6 +64,11 @@ def assert_one_item(lst: list[V]) -> V:
     return lst[0]
 
 
+def assert_not_empty(lst: list[V]) -> list[V]:
+    assert len(lst) > 0
+    return lst
+
+
 def assert_desc_sorted(lst: list[V], value: Callable[[V], float | int]):
     if len(lst) == 0:
         return lst
