@@ -102,9 +102,10 @@ def percentage(
     b: Union[float, int],
     format: Optional[Callable[[Union[float, int]], str]] = None,
 ) -> str:
+    percent = a * 100 / (b if b > 0 else 0.01)
     if format is None:
-        return "%.2f%% (%d/%d)" % (a * 100 / b, a, b)
-    return "%.2f%% (%s/%s)" % (a * 100 / b, format(a), format(b))
+        return "%.2f%% (%d/%d)" % (percent, a, b)
+    return "%.2f%% (%s/%s)" % (percent, format(a), format(b))
 
 
 def is_non_decreasing_sequence(
