@@ -69,6 +69,11 @@ def assert_not_empty(lst: list[V]) -> list[V]:
     return lst
 
 
+def assert_isinstance(x: Any, cls: type[V]) -> V:
+    assert isinstance(x, cls)
+    return x
+
+
 def assert_desc_sorted(lst: list[V], value: Callable[[V], float | int]):
     if len(lst) == 0:
         return lst
@@ -389,13 +394,17 @@ class IntegerEncoder:
         self.values.append(self.encoding[val])
 
     def get_encoder_as_list(self) -> list:
-        counter = 0
-        output = []
-        for key, val in self.encoding.items():
-            assert val == counter, (val, counter)
-            counter += 1
-            output.append(key)
-        return output
+        return get_encoder_as_list(self.encoding)
+
+
+def get_encoder_as_list(encoder: dict[V, int]) -> list[V]:
+    counter = 0
+    output = []
+    for key, val in encoder.items():
+        assert val == counter, (val, counter)
+        counter += 1
+        output.append(key)
+    return output
 
 
 class ParallelMapFnWrapper:
