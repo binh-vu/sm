@@ -393,11 +393,11 @@ class IntegerEncoder:
             self.encoding[val] = len(self.encoding)
         self.values.append(self.encoding[val])
 
-    def get_encoder_as_list(self) -> list:
-        return get_encoder_as_list(self.encoding)
+    def get_decoder(self) -> list:
+        return get_decoder(self.encoding)
 
 
-def get_encoder_as_list(encoder: dict[V, int]) -> list[V]:
+def get_decoder(encoder: dict[V, int]) -> list[V]:
     counter = 0
     output = []
     for key, val in encoder.items():
