@@ -29,7 +29,7 @@ class WikidataNamespace(KnowledgeGraphNamespace):
     ]
 
     URI_RE = re.compile(
-        r"^https?:\/\/www\.wikidata\.org\/(?:entity\/|prop\/|wiki\/Property:|wiki\/)([QPL]\d+)$"
+        r"^https?:\/\/www\.wikidata\.org\/(?:entity\/|prop\/|prop\/direct\/|wiki\/Property:|wiki\/)([QPL]\d+)$"
     )
     IS_WIKIDATA_URI = re.compile(r"^https?:\/\/www\.wikidata\.org\/")
 
