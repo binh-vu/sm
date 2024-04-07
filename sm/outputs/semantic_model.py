@@ -3,7 +3,18 @@ import tempfile
 from copy import copy
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Callable, Dict, List, Literal, Optional, Set, Tuple, Union, cast
+from typing import (
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+    cast,
+)
 
 import matplotlib.pyplot as plt
 import orjson
@@ -236,6 +247,9 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
             del self.value2id[node.value]
         return super().remove_node(node_id)
 
+    def iter_data_nodes(self) -> Iterable[DataNode]:
+        return (self._graph.get_node_data(uid) for uid in self.column2id if uid != -1)
+
     def get_semantic_types_of_column(
         self, col_index: int, statement_uri: Optional[str] = None
     ) -> List[SemanticType]:
@@ -301,6 +315,23 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
                 continue
             sem_types.update(self.get_semantic_types_of_column(ci, statement_uri))
         return sem_types
+
+    def is_entity_column(self, col_index: int, id_props: set[str]) -> bool:
+        """Test if the column is an entity column
+
+        Args:
+            col_index: column index
+            id_props: set of properties that are used to identify an entity column (e.g., rdfs:label)
+        """
+        dnode = self.get_data_node(col_index)
+        id_edges = [e for e in self.in_edges(dnode.id) if e.abs_uri in id_props]
+        if len(id_edges) == 0:
+            return False
+        if len(id_edges) > 1:
+            raise Exception(
+                f"Assuming one class node only has one subject column. Node: {dnode.id} (column {col_index}) have {len(id_edges)} subject columns: {id_edges}"
+            )
+        return True
 
     def is_equal(self, sm: "SemanticModel") -> bool:
         """Compare if two semantic model is equivalent"""
@@ -748,9 +779,13 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
             x_prime_triple = (
                 bijection.prime2x[uid],
                 e.label,
-                bijection.prime2x[vid]
-                if isinstance(v, ClassNode)
-                else ((v.col_index, v.label) if isinstance(v, DataNode) else v.value),
+                (
+                    bijection.prime2x[vid]
+                    if isinstance(v, ClassNode)
+                    else (
+                        (v.col_index, v.label) if isinstance(v, DataNode) else v.value
+                    )
+                ),
             )
             x_prime_triples.add(x_prime_triple)
             if x_prime_triple in x_triples:
@@ -906,9 +941,11 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
                 logs.append(f"{counter:02d}.\t{msg}\n")
                 outedges = sorted(
                     self.out_edges(node.id),
-                    key=lambda edge: f"0:{edge.abs_uri}"
-                    if edge.abs_uri == str(RDFS.label)
-                    else f"1:{edge.abs_uri}",
+                    key=lambda edge: (
+                        f"0:{edge.abs_uri}"
+                        if edge.abs_uri == str(RDFS.label)
+                        else f"1:{edge.abs_uri}"
+                    ),
                     reverse=True,
                 )
                 for edge in outedges:

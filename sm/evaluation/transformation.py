@@ -1,5 +1,6 @@
 from typing import Set
-from sm.outputs.semantic_model import SemanticModel, ClassNode
+
+from sm.outputs.semantic_model import ClassNode, SemanticModel
 
 
 class SemModelTransformation:
