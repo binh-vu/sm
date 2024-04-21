@@ -11,7 +11,8 @@
 ### Fixed
 
 - Add missing prefixes to DBpediaNamespace and main URIs
-- Fix division by zero error in `percentage` function
+- Fix division by zero error in `percentage`
+- Fix `FullTable.keep_columns` function to make links consistent
 
 ## [6.10.1] - 2024-03-12
 

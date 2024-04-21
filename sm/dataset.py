@@ -71,10 +71,23 @@ class FullTable:
         )
 
     def keep_columns(self, columns: list[int], reindex: bool = False) -> FullTable:
+        """Keep only the specified columns"""
+        if reindex:
+            links = Matrix([[row[ci] for ci in columns] for row in self.links.data])
+        else:
+            # if not re-indexing the columns, we need to keep the original
+            # shape (non-selected columns will be empty lists)
+            ignore_cols = [
+                col.index for col in self.table.columns if col.index not in columns
+            ]
+            links = self.links.shallow_copy()
+            for row in links.data:
+                for ci in ignore_cols:
+                    row[ci] = []
         return FullTable(
             table=self.table.keep_columns(columns, reindex),
             context=self.context,
-            links=Matrix([[row[ci] for ci in columns] for row in self.links]),
+            links=links,
         )
 
     def remove_empty_links(self) -> Self:
