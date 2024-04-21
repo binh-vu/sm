@@ -7,6 +7,7 @@
 - Add `__str__` to `EntityIdWithScore` class
 - Add `assert_not_empty` function to check if a list is not empty
 - Add `SemanticModel.is_entity_column` and `SemanticModel.iter_data_nodes` functions
+- Add `assert_is_unique`, `is_monotonic_decreasing`, and `KnownSizeIntegerEncoder` helpers
 
 ### Fixed
 

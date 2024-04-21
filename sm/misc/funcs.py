@@ -18,10 +18,12 @@ from typing import (
     Literal,
     Mapping,
     Optional,
+    Sequence,
     TypeVar,
     Union,
 )
 
+import numpy as np
 from loguru import logger
 from tqdm.auto import tqdm
 from typing_extensions import TypeGuard
@@ -74,6 +76,10 @@ def assert_isinstance(x: Any, cls: type[V]) -> V:
     return x
 
 
+def assert_is_unique(lst: list[V]) -> bool:
+    return len(set(lst)) == len(lst)
+
+
 def assert_desc_sorted(lst: list[V], value: Callable[[V], float | int]):
     if len(lst) == 0:
         return lst
@@ -117,6 +123,10 @@ def is_non_decreasing_sequence(
     lst: Union[list[Union[int, float]], list[int], list[float]]
 ) -> bool:
     return len(lst) == 0 or (all(lst[i - 1] <= lst[i] for i in range(1, len(lst))))
+
+
+def is_monotonic_decreasing(lst: Sequence[Union[int, float]]) -> bool:
+    return len(lst) == 0 or (all(lst[i - 1] >= lst[i] for i in range(1, len(lst))))
 
 
 def filter_duplication(
@@ -395,6 +405,25 @@ class IntegerEncoder:
 
     def get_decoder(self) -> list:
         return get_decoder(self.encoding)
+
+
+class KnownSizeIntegerEncoder:
+    def __init__(self, encoder: dict[str | tuple[str, ...], int], size: int):
+        self.encoder = encoder
+        self.values = np.zeros(size, dtype=np.int32)
+
+    def __setitem__(self, idx: int | slice, val: str | tuple[str, ...]):
+        if val not in self.encoder:
+            self.encoder[val] = len(self.encoder)
+        self.values[idx] = self.encoder[val]
+
+    def get_decoder(self) -> list:
+        return get_decoder(self.encoder)
+
+
+def get_encoder(decoder: list[V]) -> dict[V, int]:
+    assert_is_unique(decoder)
+    return {v: i for i, v in enumerate(decoder)}
 
 
 def get_decoder(encoder: dict[V, int]) -> list[V]:
