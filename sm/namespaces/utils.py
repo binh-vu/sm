@@ -12,6 +12,9 @@ class KGName(str, Enum):
     DBpedia = "dbpedia"
     Generic = "generic"
 
+    def __str__(self):
+        return self.value
+
 
 registered_kgns: dict[str, KnowledgeGraphNamespace] = {
     KGName.Wikidata: ExtendedWikidataNamespace.create(),

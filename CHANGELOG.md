@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.11.1] - 2024-04-26
+
+### Changed
+
+- Upgrade rdflib to 7.0.0
+
 ## [6.11.0] - 2024-04-21
 
 ### Added
