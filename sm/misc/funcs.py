@@ -362,6 +362,31 @@ def create_group_by_index(
     return odict
 
 
+def cluster(same_as: Sequence[tuple[K, K]]) -> list[list[K]]:
+    key2group: dict[K, int] = {}
+    groups: list[set[K]] = []
+    for k1, k2 in same_as:
+        if k1 not in key2group and k2 not in key2group:
+            groups.append({k1, k2})
+            key2group[k1] = len(groups) - 1
+            key2group[k2] = len(groups) - 1
+        elif k1 in key2group and k2 not in key2group:
+            groups[key2group[k1]].add(k2)
+            key2group[k2] = key2group[k1]
+        elif k2 in key2group and k1 not in key2group:
+            groups[key2group[k2]].add(k1)
+            key2group[k1] = key2group[k2]
+        elif key2group[k1] != key2group[k2]:
+            newgroup = groups[key2group[k1]].union(groups[key2group[k2]])
+            groups[key2group[k1]] = set()
+            groups[key2group[k2]] = set()
+            groups.append(newgroup)
+            for k in newgroup:
+                key2group[k] = len(groups) - 1
+
+    return [sorted(g) for g in groups if len(g) > 0]
+
+
 def make_dict(iter: Iterable[V], key: Callable[[V], K]) -> dict[K, V]:
     odict = {}
     for item in iter:

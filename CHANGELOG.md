@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Add helper functions
+
 ## [6.11.1] - 2024-04-26
 
 ### Changed

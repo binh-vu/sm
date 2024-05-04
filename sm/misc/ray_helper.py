@@ -169,11 +169,13 @@ def ray_actor_map(
     using_ray: bool = True,
     is_actor_remote: bool = True,
     remote_options: Optional[dict] = None,
+    postprocess: Optional[Callable[[Any], Any]] = None,
     before_shutdown: Optional[Callable[[Any], Any]] = None,
     auto_shutdown: bool = False,
 ):
     """
     Args:
+        postprocess: if you use numpy arrays, you can use this functions to copy out of the shared memory.
         before_shutdown: if you use numpy arrays, shutdown ray cluster will released the shared memory and thus, may corrupt the arrays later. You should use
             before_shutdown to copy the data before shutdown. This only applies to the case where using_ray=True && auto_shutdown=True.
     """
@@ -253,6 +255,9 @@ def ray_actor_map(
                         "ray_actor_map failed at item index {}", ref2index[ref]
                     )
                     raise
+
+        if postprocess is not None:
+            output = [postprocess(x) for x in output]
 
         if auto_shutdown:
             if before_shutdown is not None:
