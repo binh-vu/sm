@@ -1,10 +1,14 @@
 # Changelog
 
-## [Unreleased]
+## [6.11.2] - 2024-05-11
 
 ### Added
 
 - Add helper functions
+
+### Changed
+
+- Make ray optional
 
 ## [6.11.1] - 2024-04-26
 

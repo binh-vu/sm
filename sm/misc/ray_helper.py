@@ -17,13 +17,28 @@ from typing import (
     overload,
 )
 
-import ray
 from loguru import logger
 from tqdm.auto import tqdm
 
+try:
+    import ray
+    has_ray = True
+except ImportError:
+    has_ray = False
+    
 R = TypeVar("R")
 OBJECTS = {}
 ray_initargs: dict = {}
+
+
+def require_ray(func):    
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if not has_ray:
+            raise ImportError("ray is required for function: %s" % func.__name__)
+        return func(*args, **kwargs)
+    
+    return wrapper
 
 
 def set_ray_init_args(**kwargs):
@@ -31,6 +46,7 @@ def set_ray_init_args(**kwargs):
     ray_initargs = kwargs
 
 
+@require_ray
 def ray_init(**kwargs):
     if not ray.is_initialized():
         logger.info("Initialize ray with args: {}", kwargs)
@@ -49,6 +65,7 @@ def ray_put(val: R, using_ray: Literal[False]) -> R: ...
 def ray_put(val: R, using_ray: bool) -> Union["ray.ObjectRef[R]", R]: ...
 
 
+@require_ray
 def ray_put(val: R, using_ray: bool = True) -> Union["ray.ObjectRef[R]", R]:
     global ray_initargs
     if not using_ray:
@@ -57,11 +74,13 @@ def ray_put(val: R, using_ray: bool = True) -> Union["ray.ObjectRef[R]", R]:
     return ray.put(val)
 
 
+@require_ray
 def ray_get_num_gpu() -> float:
     ray_init(**ray_initargs)
     return ray.available_resources().get("GPU", 0)
 
 
+@require_ray
 def ray_map(
     fn: Union[Callable[..., "ray.ObjectRef[R]"], Callable[..., R]],
     args_lst: Sequence[Sequence],
@@ -157,6 +176,7 @@ def ray_map(
         return output
 
 
+@require_ray
 def ray_actor_map(
     actor_class: Type,
     actor_fn: str,
