@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.12.0] - 2024-06-18
+
+### Added
+
+- Added integer/decimal/boolean to LiteralDataNodeType
+
 ## [6.11.2] - 2024-05-11
 
 ### Added

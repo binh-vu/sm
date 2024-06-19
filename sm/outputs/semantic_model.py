@@ -137,6 +137,9 @@ class DataNode(BaseNode[int]):
 
 
 class LiteralNodeDataType(str, enum.Enum):
+    Integer = "integer"
+    Decimal = "decimal"
+    Boolean = "boolean"
     String = "string"
     # although the string is entity-id, the expected value is the entity's full URI
     Entity = "entity-id"
