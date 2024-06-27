@@ -72,7 +72,8 @@ def assert_not_empty(lst: list[V]) -> list[V]:
 
 
 def assert_isinstance(x: Any, cls: type[V]) -> V:
-    assert isinstance(x, cls)
+    if not isinstance(x, cls):
+        raise Exception(f"{type(x)} doesn't match with {type(cls)}")
     return x
 
 

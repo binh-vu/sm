@@ -14,6 +14,7 @@ F = TypeVar("F", bound=Callable)
 class CacheMethod:
     @staticmethod
     def single_object_arg(args, _kwargs):
+        assert False
         return id(args[0])
 
     @staticmethod
@@ -22,14 +23,17 @@ class CacheMethod:
 
     @staticmethod
     def two_object_args(args, _kwargs):
+        assert False
         return (id(args[0]), id(args[1]))
 
     @staticmethod
     def three_object_args(args, _kwargs):
+        assert False
         return (id(args[0]), id(args[1]), id(args[2]))
 
     @staticmethod
     def auto_object_args(args, _kwargs):
+        assert False
         return tuple(x if isinstance(x, (str, int, bool)) else id(x) for x in args)
 
     @staticmethod
