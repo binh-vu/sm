@@ -2,6 +2,7 @@ import functools
 import sqlite3
 import sys
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import (
     Any,
@@ -22,28 +23,77 @@ from tqdm.auto import tqdm
 
 try:
     import ray
+
     has_ray = True
 except ImportError:
     has_ray = False
-    
+
 R = TypeVar("R")
 OBJECTS = {}
 ray_initargs: dict = {}
+ray_is_parallelizable = False
+ray_deconstructors = []
+ray_actors = {}
 
 
-def require_ray(func):    
+def require_ray(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         if not has_ray:
             raise ImportError("ray is required for function: %s" % func.__name__)
         return func(*args, **kwargs)
-    
+
     return wrapper
+
+
+def is_parallelizable() -> bool:
+    """Check whether the current context is parallelable."""
+    global ray_is_parallelizable
+    return ray_is_parallelizable
+
+
+@contextmanager
+def allow_parallel():
+    """Mark this code block as parallelizable."""
+    global ray_is_parallelizable
+
+    prev_is_parallelizable = ray_is_parallelizable
+    try:
+        ray_is_parallelizable = True
+        yield
+    finally:
+        ray_is_parallelizable = prev_is_parallelizable
+
+
+@contextmanager
+def no_parallel():
+    """Mark this code block as non-parallelizable."""
+    global ray_is_parallelizable
+
+    prev_is_parallelizable = ray_is_parallelizable
+    try:
+        ray_is_parallelizable = False
+        yield
+    finally:
+        ray_is_parallelizable = prev_is_parallelizable
 
 
 def set_ray_init_args(**kwargs):
     global ray_initargs
     ray_initargs = kwargs
+
+
+@require_ray
+def add_ray_deconstructor(deconstructor: Callable[[], None]):
+    """Register a deconstructor that will be called when ray_shutdown() is called."""
+    global ray_deconstructors
+    ray_deconstructors.append(deconstructor)
+
+
+# @require_ray
+# def add_ray_actor(actor: Any) -> str:
+#     global ray_actors
+#     pass
 
 
 @require_ray
@@ -72,6 +122,14 @@ def ray_put(val: R, using_ray: bool = True) -> Union["ray.ObjectRef[R]", R]:
         return val
     ray_init(**ray_initargs)
     return ray.put(val)
+
+
+@require_ray
+def ray_shutdown():
+    global ray_deconstructors
+    for deconstructor in ray_deconstructors:
+        deconstructor()
+    ray.shutdown()
 
 
 @require_ray
@@ -172,7 +230,7 @@ def ray_map(
         if auto_shutdown:
             if before_shutdown is not None:
                 output = [before_shutdown(x) for x in output]
-            ray.shutdown()
+            ray_shutdown()
         return output
 
 
@@ -282,7 +340,69 @@ def ray_actor_map(
         if auto_shutdown:
             if before_shutdown is not None:
                 output = [before_shutdown(x) for x in output]
-            ray.shutdown()
+            ray_shutdown()
+
+        return output
+
+
+@require_ray
+def ray_actor_map_2(
+    actor_fns: list[Callable],
+    args_lst: Sequence[Sequence],
+    verbose: bool = False,
+    poll_interval: float = 0.1,
+    concurrent_submissions: int = 3000,
+    desc: Optional[str] = None,
+    postprocess: Optional[Callable[[Any], Any]] = None,
+    before_shutdown: Optional[Callable[[Any], Any]] = None,
+    auto_shutdown: bool = False,
+):
+    n_jobs = len(args_lst)
+    with tqdm(total=n_jobs, desc=desc, disable=not verbose) as pbar:
+        output: list = [None] * n_jobs
+
+        notready_refs = []
+        ref2index = {}
+        for i, args in enumerate(args_lst):
+            # submit a task and add it to not ready queue and ref2index
+            ref = actor_fns[i % len(actor_fns)](*args)
+            notready_refs.append(ref)
+            ref2index[ref] = i
+
+            # when the not ready queue is full, wait for some tasks to finish
+            while len(notready_refs) >= concurrent_submissions:
+                ready_refs, notready_refs = ray.wait(
+                    notready_refs, timeout=poll_interval
+                )
+                pbar.update(len(ready_refs))
+                for ref in ready_refs:
+                    try:
+                        output[ref2index[ref]] = ray.get(ref)
+                    except:
+                        logger.error(
+                            "ray_actor_map failed at item index {}", ref2index[ref]
+                        )
+                        raise
+
+        while len(notready_refs) > 0:
+            ready_refs, notready_refs = ray.wait(notready_refs, timeout=poll_interval)
+            pbar.update(len(ready_refs))
+            for ref in ready_refs:
+                try:
+                    output[ref2index[ref]] = ray.get(ref)
+                except:
+                    logger.error(
+                        "ray_actor_map failed at item index {}", ref2index[ref]
+                    )
+                    raise
+
+        if postprocess is not None:
+            output = [postprocess(x) for x in output]
+
+        if auto_shutdown:
+            if before_shutdown is not None:
+                output = [before_shutdown(x) for x in output]
+            ray_shutdown()
 
         return output
 
