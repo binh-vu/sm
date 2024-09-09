@@ -65,6 +65,9 @@ class ColumnBasedTable:
             return 0
         return len(self.columns[0].values)
 
+    def has_column_by_index(self, col_idx: int) -> bool:
+        return col_idx in self.index2columns
+
     def get_column_by_index(self, col_idx: int) -> Column:
         return self.index2columns[col_idx]
 
