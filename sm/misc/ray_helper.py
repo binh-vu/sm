@@ -3,6 +3,8 @@ import sqlite3
 import sys
 import time
 from contextlib import contextmanager
+from dataclasses import dataclass, field
+from email.policy import default
 from pathlib import Path
 from typing import (
     Any,
@@ -18,6 +20,7 @@ from typing import (
     overload,
 )
 
+import numpy as np
 from loguru import logger
 from tqdm.auto import tqdm
 
@@ -28,12 +31,31 @@ try:
 except ImportError:
     has_ray = False
 
+
+@dataclass
+class RayScope:
+    allow_parallel: bool
+    actors: dict[str, list["ray.ObjectRef"]] = field(default_factory=dict)
+
+    def kill_actors(self, ns: Optional[str] = None):
+        if ns is None:
+            for actors in self.actors.values():
+                for actor in actors:
+                    ray.kill(actor)
+            self.actors = {}
+        else:
+            for actor in self.actors.get(ns, []):
+                ray.kill(actor)
+            self.actors.pop(ns, None)
+
+    def num_actors(self) -> int:
+        return sum(len(actors) for actors in self.actors.values())
+
+
 R = TypeVar("R")
 OBJECTS = {}
 ray_initargs: dict = {}
-ray_is_parallelizable = False
-ray_deconstructors = []
-ray_actors = {}
+ray_scopes: list[RayScope] = []
 
 
 def require_ray(func):
@@ -48,34 +70,34 @@ def require_ray(func):
 
 def is_parallelizable() -> bool:
     """Check whether the current context is parallelable."""
-    global ray_is_parallelizable
-    return ray_is_parallelizable
+    global ray_scopes
+    return len(ray_scopes) > 0 and ray_scopes[-1].allow_parallel
 
 
 @contextmanager
 def allow_parallel():
     """Mark this code block as parallelizable."""
-    global ray_is_parallelizable
+    global ray_scopes
 
-    prev_is_parallelizable = ray_is_parallelizable
     try:
-        ray_is_parallelizable = True
+        ray_scopes.append(RayScope(allow_parallel=True))
         yield
     finally:
-        ray_is_parallelizable = prev_is_parallelizable
+        scope = ray_scopes.pop()
+        scope.kill_actors()
 
 
 @contextmanager
 def no_parallel():
     """Mark this code block as non-parallelizable."""
-    global ray_is_parallelizable
+    global ray_scopes
 
-    prev_is_parallelizable = ray_is_parallelizable
     try:
-        ray_is_parallelizable = False
+        ray_scopes.append(RayScope(allow_parallel=False))
         yield
     finally:
-        ray_is_parallelizable = prev_is_parallelizable
+        scope = ray_scopes.pop()
+        assert scope.num_actors() == 0
 
 
 def set_ray_init_args(**kwargs):
@@ -84,16 +106,32 @@ def set_ray_init_args(**kwargs):
 
 
 @require_ray
-def add_ray_deconstructor(deconstructor: Callable[[], None]):
-    """Register a deconstructor that will be called when ray_shutdown() is called."""
-    global ray_deconstructors
-    ray_deconstructors.append(deconstructor)
+def add_ray_actors(
+    cls: type[R], args: tuple, ns: str, size: int = 1, scope: int = -1
+) -> list["ray.ObjectRef[R]"]:
+    """Create a ray actor and return the actor ref. Also, store the actor ref in an scope identified by the index.
+
+    Args:
+        cls: the class of the actor.
+        args: the arguments to create the actor.
+        size: number of actors to create
+        scope: scope index
+    """
+    global ray_scopes
+    scope_data = ray_scopes[scope]
+    assert scope_data.allow_parallel, "Cannot create actors in a non-parallel context"
+    if ns not in scope_data.actors:
+        scope_data.actors[ns] = []
+    while len(scope_data.actors[ns]) < size:
+        scope_data.actors[ns].append(ray.remote(cls).remote(*args))
+    return scope_data.actors[ns]
 
 
-# @require_ray
-# def add_ray_actor(actor: Any) -> str:
-#     global ray_actors
-#     pass
+def get_ray_actors(ns: str, scope: int = -1) -> list["ray.ObjectRef"]:
+    global ray_scopes
+    scope_data = ray_scopes[scope]
+    assert scope_data.allow_parallel, "Cannot create actors in a non-parallel context"
+    return scope_data.actors.get(ns, [])
 
 
 @require_ray
@@ -124,11 +162,15 @@ def ray_put(val: R, using_ray: bool = True) -> Union["ray.ObjectRef[R]", R]:
     return ray.put(val)
 
 
+def ray_get(val: "ray.ObjectRef[R]") -> R:
+    obj = ray.get(val)
+    if isinstance(obj, np.ndarray):
+        return np.copy(obj)  # type: ignore
+    return obj
+
+
 @require_ray
 def ray_shutdown():
-    global ray_deconstructors
-    for deconstructor in ray_deconstructors:
-        deconstructor()
     ray.shutdown()
 
 
@@ -170,7 +212,7 @@ def ray_map(
             newarg = []
             for x in arg:
                 if isinstance(x, ray.ObjectRef):
-                    newarg.append(ray.get(x))
+                    newarg.append(ray_get(x))
                 else:
                     newarg.append(x)
             try:
@@ -212,7 +254,7 @@ def ray_map(
                 pbar.update(len(ready_refs))
                 for ref in ready_refs:
                     try:
-                        output[ref2index[ref]] = ray.get(ref)
+                        output[ref2index[ref]] = ray_get(ref)
                     except:
                         logger.error("ray_map failed at item index {}", ref2index[ref])
                         raise
@@ -222,7 +264,7 @@ def ray_map(
             pbar.update(len(ready_refs))
             for ref in ready_refs:
                 try:
-                    output[ref2index[ref]] = ray.get(ref)
+                    output[ref2index[ref]] = ray_get(ref)
                 except:
                     logger.error("ray_map failed at item index {}", ref2index[ref])
                     raise
@@ -235,7 +277,7 @@ def ray_map(
 
 
 @require_ray
-def ray_actor_map(
+def ray_actor_map_1(
     actor_class: Type,
     actor_fn: str,
     actor_args_lst: Sequence[Sequence],
@@ -273,7 +315,7 @@ def ray_actor_map(
             newarg = []
             for x in arg:
                 if isinstance(x, ray.ObjectRef):
-                    newarg.append(ray.get(x))
+                    newarg.append(ray_get(x))
                 else:
                     newarg.append(x)
             try:
@@ -315,7 +357,7 @@ def ray_actor_map(
                 pbar.update(len(ready_refs))
                 for ref in ready_refs:
                     try:
-                        output[ref2index[ref]] = ray.get(ref)
+                        output[ref2index[ref]] = ray_get(ref)
                     except:
                         logger.error(
                             "ray_actor_map failed at item index {}", ref2index[ref]
@@ -327,7 +369,7 @@ def ray_actor_map(
             pbar.update(len(ready_refs))
             for ref in ready_refs:
                 try:
-                    output[ref2index[ref]] = ray.get(ref)
+                    output[ref2index[ref]] = ray_get(ref)
                 except:
                     logger.error(
                         "ray_actor_map failed at item index {}", ref2index[ref]
@@ -346,7 +388,7 @@ def ray_actor_map(
 
 
 @require_ray
-def ray_actor_map_2(
+def ray_actor_map(
     actor_fns: list[Callable],
     args_lst: Sequence[Sequence],
     verbose: bool = False,
@@ -377,7 +419,7 @@ def ray_actor_map_2(
                 pbar.update(len(ready_refs))
                 for ref in ready_refs:
                     try:
-                        output[ref2index[ref]] = ray.get(ref)
+                        output[ref2index[ref]] = ray_get(ref)
                     except:
                         logger.error(
                             "ray_actor_map failed at item index {}", ref2index[ref]
@@ -389,7 +431,7 @@ def ray_actor_map_2(
             pbar.update(len(ready_refs))
             for ref in ready_refs:
                 try:
-                    output[ref2index[ref]] = ray.get(ref)
+                    output[ref2index[ref]] = ray_get(ref)
                 except:
                     logger.error(
                         "ray_actor_map failed at item index {}", ref2index[ref]
