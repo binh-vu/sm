@@ -21,7 +21,7 @@ class SemModelTransformation:
                     continue
                 if len(id_edges) > 1:
                     raise Exception(
-                        f"Assuming one class node only has one subject column. Node: {cnode.id} have {len(outedges)} subject columns: {outedges}"
+                        f"Assuming one class node only has one subject column. Node: {cnode.id} have {len(id_edges)} subject columns: {id_edges}"
                     )
 
                 id_edge = id_edges[0]
