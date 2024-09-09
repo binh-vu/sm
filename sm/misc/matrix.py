@@ -47,25 +47,26 @@ class Matrix(Generic[T]):
         return Matrix([[deepcopy(item) for item in row] for row in self.data])
 
     @overload
-    def __getitem__(self, item: int | Tuple[int, slice] | Tuple[slice, int]) -> List[T]:
-        ...
+    def __getitem__(
+        self, item: int | Tuple[int, slice] | Tuple[slice, int]
+    ) -> List[T]: ...
 
     @overload
-    def __getitem__(self, item: Tuple[int, int]) -> T:
-        ...
+    def __getitem__(self, item: Tuple[int, int]) -> T: ...
 
     @overload
-    def __getitem__(self, item: slice | Tuple[slice, slice]) -> List[List[T]]:
-        ...
+    def __getitem__(self, item: slice | Tuple[slice, slice]) -> List[List[T]]: ...
 
     def __getitem__(
         self,
-        item: int
-        | slice
-        | Tuple[int, int]
-        | Tuple[slice, slice]
-        | Tuple[int, slice]
-        | Tuple[slice, int],
+        item: (
+            int
+            | slice
+            | Tuple[int, int]
+            | Tuple[slice, slice]
+            | Tuple[int, slice]
+            | Tuple[slice, int]
+        ),
     ) -> List[T] | List[List[T]] | T:
         if isinstance(item, (int, slice)):
             return self.data[item]
@@ -94,6 +95,14 @@ class Matrix(Generic[T]):
 
     def map(self, fn: Callable[[T], T1]) -> Matrix[T1]:
         return Matrix([[fn(item) for item in row] for row in self.data])
+
+    def map_with_index(self, fn: Callable[[int, int, T], T1]) -> Matrix[T1]:
+        return Matrix(
+            [
+                [fn(ri, ci, item) for ci, item in enumerate(row)]
+                for ri, row in enumerate(self.data)
+            ]
+        )
 
     def map_index(self, fn: Callable[[int, int], T1]) -> Matrix[T1]:
         nrows, ncols = self.shape()
