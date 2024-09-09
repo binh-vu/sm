@@ -31,13 +31,14 @@ from ruamel.yaml import YAML
 from serde import json
 from serde.helper import DEFAULT_ORJSON_OPTS, get_open_fn
 from slugify import slugify
+from tqdm.auto import tqdm
+from typing_extensions import Self
+
 from sm.inputs.prelude import ColumnBasedTable, Context, Link
 from sm.misc.funcs import batch
 from sm.misc.matrix import Matrix
 from sm.namespaces.namespace import Namespace
 from sm.outputs.semantic_model import SemanticModel
-from tqdm.auto import tqdm
-from typing_extensions import Self
 
 T = TypeVar("T", covariant=True)
 T1 = TypeVar("T1")
@@ -146,12 +147,12 @@ class Dataset:
                 root = ZipPath(zf)
                 if self.description_dir(root).exists():
                     yield root
-
-                subdirs = list(root.iterdir())
-                if len(subdirs) == 1 and self.description_dir(subdirs[0]).exists():
-                    yield subdirs[0]
                 else:
-                    raise ValueError("Invalid dataset format")
+                    subdirs = list(root.iterdir())
+                    if len(subdirs) == 1 and self.description_dir(subdirs[0]).exists():
+                        yield subdirs[0]
+                    else:
+                        raise ValueError("Invalid dataset format")
         else:
             yield self.location
 
@@ -165,7 +166,7 @@ class Dataset:
         return self.location.name.endswith(".zip")
 
     def load(self, verbose: bool = False) -> list[Example[FullTable]]:
-        """Load dataset from a folder. Assuming the following structure:
+        """Load dataset from a folder or a single zip file. Assuming the following structure:
 
         descriptions (containing semantic descriptions of tables)
         ├── <table_fs_id>
@@ -307,6 +308,21 @@ class Dataset:
         table_fmt_indent: Literal[0, 2] = 0,
         clean_previous_data: bool = True,
     ):
+        if self.is_zip_file():
+            with ZipFile(self.location, "w") as root:
+                assert isinstance(root, ZipFile)
+                for e in examples:
+                    ename = get_friendly_fs_id(e.table.table.table_id) + f".{table_fmt}"
+                    root.writestr(
+                        "descriptions/" + ename,
+                        data=orjson.dumps([sm.to_dict() for sm in e.sms]),
+                    )
+                    root.writestr(
+                        "tables/" + ename,
+                        data=self._ser_table(e.table, table_fmt, table_fmt_indent),
+                    )
+            return
+
         descdir = self.description_dir(self.location)
         tabledir = self.table_dir(self.location)
         assert (
