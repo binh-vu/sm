@@ -63,6 +63,9 @@ class FullTable:
     def nrows(self) -> int:
         return self.table.nrows()
 
+    def ncols(self) -> int:
+        return self.table.ncols()
+
     def select_rows(self, indices: list[int]) -> FullTable:
         """Select a subset of rows based on a boolean mask"""
         return FullTable(
