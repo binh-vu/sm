@@ -107,7 +107,12 @@ def set_ray_init_args(**kwargs):
 
 @require_ray
 def add_ray_actors(
-    cls: type[R], args: tuple, ns: str, size: int = 1, scope: int = -1
+    cls: type[R],
+    args: tuple,
+    ns: str,
+    size: int = 1,
+    scope: int = -1,
+    remote_options: Optional[dict] = None,
 ) -> list["ray.ObjectRef[R]"]:
     """Create a ray actor and return the actor ref. Also, store the actor ref in an scope identified by the index.
 
@@ -122,8 +127,14 @@ def add_ray_actors(
     assert scope_data.allow_parallel, "Cannot create actors in a non-parallel context"
     if ns not in scope_data.actors:
         scope_data.actors[ns] = []
+
+    if len(scope_data.actors[ns]) < size and remote_options is not None:
+        wrapper = ray.remote(**remote_options)
+    else:
+        wrapper = ray.remote
+
     while len(scope_data.actors[ns]) < size:
-        scope_data.actors[ns].append(ray.remote(cls).remote(*args))
+        scope_data.actors[ns].append(wrapper(cls).remote(*args))
     return scope_data.actors[ns]
 
 
@@ -273,117 +284,6 @@ def ray_map(
             if before_shutdown is not None:
                 output = [before_shutdown(x) for x in output]
             ray_shutdown()
-        return output
-
-
-@require_ray
-def ray_actor_map_1(
-    actor_class: Type,
-    actor_fn: str,
-    actor_args_lst: Sequence[Sequence],
-    args_lst: Sequence[Sequence],
-    verbose: bool = False,
-    poll_interval: float = 0.1,
-    concurrent_submissions: int = 3000,
-    desc: Optional[str] = None,
-    using_ray: bool = True,
-    is_actor_remote: bool = True,
-    remote_options: Optional[dict] = None,
-    postprocess: Optional[Callable[[Any], Any]] = None,
-    before_shutdown: Optional[Callable[[Any], Any]] = None,
-    auto_shutdown: bool = False,
-):
-    """
-    Args:
-        postprocess: if you use numpy arrays, you can use this functions to copy out of the shared memory.
-        before_shutdown: if you use numpy arrays, shutdown ray cluster will released the shared memory and thus, may corrupt the arrays later. You should use
-            before_shutdown to copy the data before shutdown. This only applies to the case where using_ray=True && auto_shutdown=True.
-    """
-    global ray_initargs
-
-    if not using_ray:
-        # assert all actors are local
-        assert (
-            not is_actor_remote
-        ), "If you want to run it locally, do not wrap the actor class with ray.remote"
-        actors = [actor_class(*args) for args in actor_args_lst]
-        actor_fns = [getattr(actor, actor_fn) for actor in actors]
-
-        output = []
-        i = 0
-        for arg in tqdm(args_lst, desc=desc, disable=not verbose):
-            newarg = []
-            for x in arg:
-                if isinstance(x, ray.ObjectRef):
-                    newarg.append(ray_get(x))
-                else:
-                    newarg.append(x)
-            try:
-                output.append(actor_fns[i % len(actors)](*newarg))
-            except:
-                logger.error("ray_actor_map failed at item index {}", len(output))
-                raise
-            i += 1
-        return output
-
-    ray_init(**ray_initargs)
-
-    if not is_actor_remote:
-        if remote_options is None:
-            actor_class = ray.remote(actor_class)
-        else:
-            actor_class = ray.remote(**remote_options)(actor_class)
-
-    actors = [actor_class.remote(*args) for args in actor_args_lst]
-    actor_fns = [getattr(actor, actor_fn).remote for actor in actors]
-
-    n_jobs = len(args_lst)
-    with tqdm(total=n_jobs, desc=desc, disable=not verbose) as pbar:
-        output: list = [None] * n_jobs
-
-        notready_refs = []
-        ref2index = {}
-        for i, args in enumerate(args_lst):
-            # submit a task and add it to not ready queue and ref2index
-            ref = actor_fns[i % len(actors)](*args)
-            notready_refs.append(ref)
-            ref2index[ref] = i
-
-            # when the not ready queue is full, wait for some tasks to finish
-            while len(notready_refs) >= concurrent_submissions:
-                ready_refs, notready_refs = ray.wait(
-                    notready_refs, timeout=poll_interval
-                )
-                pbar.update(len(ready_refs))
-                for ref in ready_refs:
-                    try:
-                        output[ref2index[ref]] = ray_get(ref)
-                    except:
-                        logger.error(
-                            "ray_actor_map failed at item index {}", ref2index[ref]
-                        )
-                        raise
-
-        while len(notready_refs) > 0:
-            ready_refs, notready_refs = ray.wait(notready_refs, timeout=poll_interval)
-            pbar.update(len(ready_refs))
-            for ref in ready_refs:
-                try:
-                    output[ref2index[ref]] = ray_get(ref)
-                except:
-                    logger.error(
-                        "ray_actor_map failed at item index {}", ref2index[ref]
-                    )
-                    raise
-
-        if postprocess is not None:
-            output = [postprocess(x) for x in output]
-
-        if auto_shutdown:
-            if before_shutdown is not None:
-                output = [before_shutdown(x) for x in output]
-            ray_shutdown()
-
         return output
 
 

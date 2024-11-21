@@ -32,6 +32,8 @@ Deprecated = "^1.2.13"
 ray = { version = "^2.0.1", extras = ["default"], optional = true }
 timer4 = ">= 1.0.4, < 2.0.0"
 typing-extensions = "^4.7.1"
+transformers = "^4.44.2"
+torch = "^2.4.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.1.3"
