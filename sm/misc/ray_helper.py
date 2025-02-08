@@ -56,9 +56,9 @@ class RayScope:
 
 
 class RemoteService:
-    def __init__(self, cls: type, args: tuple):
-        self.object = cls(*args)
-        self.classpath = get_classpath(cls)
+    def __init__(self, constructor: Union[type, Callable], args: tuple):
+        self.object = constructor(*args)
+        self.classpath = get_classpath(self.object.__class__)
         self.classargs = args
 
     async def __call__(self, req: Request) -> Any:
@@ -68,13 +68,13 @@ class RemoteService:
         return getattr(self.object, req["method"])(*req["args"], **req["kwargs"])
 
     @staticmethod
-    def start(cls: type, args: tuple, options: Optional[dict] = None):
+    def start(clz: Union[type, Callable], args: tuple, options: Optional[dict] = None):
         from ray import serve
 
         serve.run(
-            serve.deployment(name=cls.__name__)(lambda: RemoteService(cls, args))
-            .options(**(options or {}))
-            .bind()
+            serve.deployment(name=clz.__name__, **(options or {}))(
+                lambda: RemoteService(clz, args)
+            ).bind()
         )
 
 
