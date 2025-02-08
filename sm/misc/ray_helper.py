@@ -20,8 +20,11 @@ from typing import (
     overload,
 )
 
+import httpx
 import numpy as np
 from loguru import logger
+from sm.misc.funcs import get_classpath
+from starlette.requests import Request
 from tqdm.auto import tqdm
 
 try:
@@ -50,6 +53,65 @@ class RayScope:
 
     def num_actors(self) -> int:
         return sum(len(actors) for actors in self.actors.values())
+
+
+class RemoteService:
+    def __init__(self, cls: type, args: tuple):
+        self.object = cls(*args)
+        self.classpath = get_classpath(cls)
+        self.classargs = args
+
+    async def __call__(self, req: Request) -> Any:
+        req = await req.json()
+        if req["method"] == "__meta__":
+            return self.classpath, self.classargs
+        return getattr(self.object, req["method"])(*req["args"], **req["kwargs"])
+
+    @staticmethod
+    def start(cls: type, args: tuple, options: Optional[dict] = None):
+        from ray import serve
+
+        serve.run(
+            serve.deployment(name=cls.__name__)(lambda: RemoteService(cls, args))
+            .options(**(options or {}))
+            .bind()
+        )
+
+
+class RemoteClient:
+    @dataclass
+    class RPC:
+        slf: "RemoteClient"
+        name: str
+
+        def __call__(self, *args, **kwargs) -> Any:
+            return (
+                httpx.post(
+                    self.slf.endpoint,
+                    json={
+                        "method": self.name,
+                        "args": args,
+                        "kwargs": kwargs,
+                    },
+                )
+                .raise_for_status()
+                .json()
+            )
+
+    def __init__(self, cls: type, args: tuple, endpoint: str):
+        self.cls = cls
+        self.args = args
+        self.endpoint = endpoint
+
+        # if the remote service is correct...
+        classpath, classargs = (
+            httpx.post(endpoint, json={"method": "__meta__"}).raise_for_status().json()
+        )
+        if not (classpath == get_classpath(cls) and classargs == args):
+            raise ValueError("Remote service is not correct.")
+
+    def __getattr__(self, name: str) -> Any:
+        return RemoteClient.RPC(self, name)
 
 
 R = TypeVar("R")

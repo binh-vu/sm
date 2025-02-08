@@ -19,6 +19,7 @@ from typing import (
     Mapping,
     Optional,
     Sequence,
+    Type,
     TypeVar,
     Union,
 )
@@ -30,6 +31,7 @@ from typing_extensions import TypeGuard
 
 K = TypeVar("K")
 V = TypeVar("V")
+TYPE_ALIASES = {"typing.List": "list", "typing.Dict": "dict", "typing.Set": "set"}
 
 
 def str2bool(x):
@@ -574,6 +576,27 @@ class DictProxy(Mapping[K, V2]):
 
     def items(self):
         return ((k, self.access(v)) for k, v in self.odict.items())
+
+
+def get_classpath(type: Type | Callable) -> str:
+    if type.__module__ == "builtins":
+        return type.__qualname__
+
+    if hasattr(type, "__qualname__"):
+        return type.__module__ + "." + type.__qualname__
+
+    # typically a class from the typing module
+    if hasattr(type, "_name") and type._name is not None:
+        path = type.__module__ + "." + type._name
+        if path in TYPE_ALIASES:
+            path = TYPE_ALIASES[path]
+    elif hasattr(type, "__origin__") and hasattr(type.__origin__, "_name"):
+        # found one case which is typing.Union
+        path = type.__module__ + "." + type.__origin__._name
+    else:
+        raise NotImplementedError(type)
+
+    return path
 
 
 def import_func(func_ident: str) -> Callable:
