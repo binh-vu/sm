@@ -72,6 +72,7 @@ class RemoteService:
         clz: Union[type, Callable],
         args: tuple,
         options: Optional[dict] = None,
+        name: Optional[str] = None,
         blocking: bool = False,
     ):
         """Deploy a service on Ray cluster.
@@ -80,12 +81,13 @@ class RemoteService:
             clz: constructor
             args: arguments to the constructor
             options: options to deploy the service
+            name: name of the service
             blocking: whether to block the main thread so users can run Ctrl+C to stop the service
         """
         from ray import serve
 
         serve.run(
-            serve.deployment(name=clz.__name__, **(options or {}))(
+            serve.deployment(name=name or clz.__name__, **(options or {}))(
                 lambda: RemoteService(clz, args)
             ).bind(),
             blocking=blocking,
