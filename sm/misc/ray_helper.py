@@ -68,13 +68,27 @@ class RemoteService:
         return getattr(self.object, req["method"])(*req["args"], **req["kwargs"])
 
     @staticmethod
-    def start(clz: Union[type, Callable], args: tuple, options: Optional[dict] = None):
+    def start(
+        clz: Union[type, Callable],
+        args: tuple,
+        options: Optional[dict] = None,
+        blocking: bool = False,
+    ):
+        """Deploy a service on Ray cluster.
+
+        Args:
+            clz: constructor
+            args: arguments to the constructor
+            options: options to deploy the service
+            blocking: whether to block the main thread so users can run Ctrl+C to stop the service
+        """
         from ray import serve
 
         serve.run(
             serve.deployment(name=clz.__name__, **(options or {}))(
                 lambda: RemoteService(clz, args)
-            ).bind()
+            ).bind(),
+            blocking=blocking,
         )
 
 
