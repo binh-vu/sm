@@ -2,9 +2,14 @@ from dataclasses import dataclass
 from typing import Dict, Mapping, Optional, Sequence, Set, Union
 
 from sm.evaluation import sm_metrics
-from sm.evaluation.transformation import SemModelTransformation
 from sm.evaluation.utils import PrecisionRecallF1
-from sm.outputs.semantic_model import ClassNode, DataNode, SemanticModel
+from sm.outputs import (
+    ClassNode,
+    DataNode,
+    SemanticModel,
+    remove_isolated_nodes,
+    replace_class_nodes_by_subject_columns,
+)
 
 
 @dataclass
@@ -107,5 +112,5 @@ def _get_cta(sm: SemanticModel, id_props: Set[str]) -> Dict[str, str]:
 
 
 def _cpa_transformation(sm: SemanticModel, id_props: Set[str]) -> None:
-    SemModelTransformation.replace_class_nodes_by_subject_columns(sm, id_props)
-    SemModelTransformation.remove_isolated_nodes(sm)
+    replace_class_nodes_by_subject_columns(sm, id_props)
+    remove_isolated_nodes(sm)

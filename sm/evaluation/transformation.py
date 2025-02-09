@@ -1,6 +1,13 @@
+import warnings
 from typing import Set
 
 from sm.outputs.semantic_model import ClassNode, SemanticModel
+
+warnings.warn(
+    "SemModelTransformation is deprecated and will be removed in future versions. Use functions in `sm.outputs` instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 class SemModelTransformation:
