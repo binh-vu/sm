@@ -61,13 +61,15 @@ class RemoteService:
         self.classpath = get_classpath(self.object.__class__)
         self.classargs = args
 
-    async def __call__(self, req: Request) -> Any:
+    async def __call__(self, req: Request) -> dict | tuple:
         req = await req.json()
         if req["method"] == "__meta__":
             return self.classpath, self.classargs
-        return getattr(self.object, req["method"])(
-            *req.get("args", tuple()), **req.get("kwargs", {})
-        )
+        return {
+            "return": getattr(self.object, req["method"])(
+                *req.get("args", tuple()), **req.get("kwargs", {})
+            )
+        }
 
     @staticmethod
     def start(
@@ -116,7 +118,8 @@ class RemoteClient:
                 raise Exception(
                     f"Failed to call {self.name}. Response ({r.status_code}), reason: {r.text}"
                 )
-            return r.json()
+
+            return r.json()["return"]
 
     def __init__(self, cls: type, args: tuple, endpoint: str):
         self.cls = cls
