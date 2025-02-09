@@ -65,7 +65,9 @@ class RemoteService:
         req = await req.json()
         if req["method"] == "__meta__":
             return self.classpath, self.classargs
-        return getattr(self.object, req["method"])(*req["args"], **req["kwargs"])
+        return getattr(self.object, req["method"])(
+            *req.get("args", tuple()), **req.get("kwargs", {})
+        )
 
     @staticmethod
     def start(
@@ -88,8 +90,8 @@ class RemoteService:
 
         serve.run(
             serve.deployment(name=name or clz.__name__, **(options or {}))(
-                lambda: RemoteService(clz, args)
-            ).bind(),
+                RemoteService
+            ).bind(constructor=clz, args=args),
             blocking=blocking,
         )
 
