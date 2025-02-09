@@ -103,18 +103,20 @@ class RemoteClient:
         name: str
 
         def __call__(self, *args, **kwargs) -> Any:
-            return (
-                httpx.post(
-                    self.slf.endpoint,
-                    json={
-                        "method": self.name,
-                        "args": args,
-                        "kwargs": kwargs,
-                    },
-                )
-                .raise_for_status()
-                .json()
+            r = httpx.post(
+                self.slf.endpoint,
+                json={
+                    "method": self.name,
+                    "args": args,
+                    "kwargs": kwargs,
+                },
+                timeout=None,
             )
+            if r.status_code != 200:
+                raise Exception(
+                    f"Failed to call {self.name}. Response ({r.status_code}), reason: {r.text}"
+                )
+            return r.json()
 
     def __init__(self, cls: type, args: tuple, endpoint: str):
         self.cls = cls
@@ -125,8 +127,10 @@ class RemoteClient:
         classpath, classargs = (
             httpx.post(endpoint, json={"method": "__meta__"}).raise_for_status().json()
         )
-        if not (classpath == get_classpath(cls) and classargs == args):
-            raise ValueError("Remote service is not correct.")
+        if not (classpath == get_classpath(cls) and tuple(classargs) == args):
+            raise ValueError(
+                f"Remote service is not correct. Get ({classpath})({classargs}) instead of ({get_classpath(cls)})({args})"
+            )
 
     def __getattr__(self, name: str) -> Any:
         return RemoteClient.RPC(self, name)
