@@ -82,7 +82,7 @@ def create_sm_from_cta_cpa(
     on_untype_source_column_node: Literal[
         "create-class", "remove-link"
     ] = "create-class",
-    get_ent_label: Optional[Callable[[InternalID], str]] = None,
+    get_cls_label: Optional[Callable[[InternalID], str]] = None,
     get_prop_label: Optional[Callable[[InternalID], str]] = None,
 ) -> SemanticModel:
     """Create a semantic model from outputs of CPA and CTA tasks
@@ -94,8 +94,8 @@ def create_sm_from_cta_cpa(
         cta: mapping from column index to class id
         validate: whether to validate the input to make sure it's correct classes and properties
     """
-    if get_ent_label is None:
-        get_ent_label = lambda ent_id: kgns.get_rel_uri(kgns.id_to_uri(ent_id))
+    if get_cls_label is None:
+        get_cls_label = lambda ent_id: kgns.get_rel_uri(kgns.id_to_uri(ent_id))
     if get_prop_label is None:
         get_prop_label = lambda prop_id: kgns.get_rel_uri(kgns.id_to_uri(prop_id))
 
@@ -132,7 +132,7 @@ def create_sm_from_cta_cpa(
         cnode = ClassNode(
             abs_uri=curl,
             rel_uri=kgns.get_rel_uri(kgns.id_to_uri(ent_id)),
-            readable_label=get_ent_label(ent_id),
+            readable_label=get_cls_label(ent_id),
         )
         dnode = nodes[col2id[col_index]]
         sm.add_node(cnode)
