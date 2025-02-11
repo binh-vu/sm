@@ -128,7 +128,9 @@ class RemoteClient:
 
         # if the remote service is correct...
         classpath, classargs = (
-            httpx.post(endpoint, json={"method": "__meta__"}).raise_for_status().json()
+            httpx.post(endpoint, json={"method": "__meta__"}, timeout=None)
+            .raise_for_status()
+            .json()
         )
         if not (classpath == get_classpath(cls) and tuple(classargs) == args):
             raise ValueError(
