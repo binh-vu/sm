@@ -1,4 +1,5 @@
 import functools
+import pickle
 import sqlite3
 import sys
 import time
@@ -22,6 +23,7 @@ from typing import (
 
 import httpx
 import numpy as np
+import orjson
 from loguru import logger
 from sm.misc.funcs import get_classpath
 from starlette.requests import Request
@@ -62,7 +64,7 @@ class RemoteService:
         self.classargs = args
 
     async def __call__(self, req: Request) -> dict | tuple:
-        req = await req.json()
+        req = pickle.loads(await req.body())
         if req["method"] == "__meta__":
             return self.classpath, self.classargs
         return {
@@ -107,11 +109,13 @@ class RemoteClient:
         def __call__(self, *args, **kwargs) -> Any:
             r = httpx.post(
                 self.slf.endpoint,
-                json={
-                    "method": self.name,
-                    "args": args,
-                    "kwargs": kwargs,
-                },
+                content=pickle.dumps(
+                    {
+                        "method": self.name,
+                        "args": args,
+                        "kwargs": kwargs,
+                    }
+                ),
                 timeout=None,
             )
             if r.status_code != 200:
