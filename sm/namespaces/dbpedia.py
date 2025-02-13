@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rdflib import RDF, RDFS
+from rdflib import OWL, RDF, RDFS
 from sm.namespaces.namespace import (
     DefaultKnowledgeGraphNamespace,
     KnowledgeGraphNamespace,
@@ -10,9 +10,9 @@ from sm.namespaces.namespace import (
 class DBpediaNamespace(DefaultKnowledgeGraphNamespace):
     """Namespace for DBpedia entities and ontology"""
 
-    entity_id: str = str(RDFS.Resource)
-    entity_uri: str = str(RDFS.Resource)
-    entity_label: str = "Resource"
+    entity_id: str = str(OWL.Thing)
+    entity_uri: str = str(OWL.Thing)
+    entity_label: str = "Thing"
     statement_uri: str = str(RDF.Statement)
     main_namespaces: list[str] = [
         "http://dbpedia.org/ontology/",

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from curses.ascii import isdigit
 from enum import Enum
+from typing import Optional
 
 from sm.namespaces.dbpedia import DBpediaNamespace
 from sm.namespaces.namespace import KnowledgeGraphNamespace
@@ -37,11 +39,3 @@ def register_kgns(kgname: str, kgns: KnowledgeGraphNamespace):
 def has_kgns(kgname: str) -> bool:
     global registered_kgns
     return kgname in registered_kgns
-
-
-def format_label(label: str, id: InternalID) -> str:
-    if id[1:].isdigit():
-        # this id is typically from Wikidata database - we include it in the label to make it easier to identify
-        # the entity/property
-        return f"{label} ({id})"
-    return label
