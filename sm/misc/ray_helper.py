@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from email.policy import default
 from pathlib import Path
+from traceback import format_exception
 from typing import (
     Any,
     Callable,
@@ -27,6 +28,7 @@ import orjson
 from loguru import logger
 from sm.misc.funcs import get_classpath
 from starlette.requests import Request
+from starlette.responses import Response
 from tqdm.auto import tqdm
 
 try:
@@ -63,15 +65,18 @@ class RemoteService:
         self.classpath = get_classpath(self.object.__class__)
         self.classargs = args
 
-    async def __call__(self, req: Request) -> dict | tuple:
+    async def __call__(self, req: Request) -> dict | tuple | Response:
         req = pickle.loads(await req.body())
         if req["method"] == "__meta__":
             return self.classpath, self.classargs
-        return {
-            "return": getattr(self.object, req["method"])(
-                *req.get("args", tuple()), **req.get("kwargs", {})
-            )
-        }
+        try:
+            return {
+                "return": getattr(self.object, req["method"])(
+                    *req.get("args", tuple()), **req.get("kwargs", {})
+                )
+            }
+        except Exception as e:
+            return Response("".join(format_exception(e)), status_code=500)
 
     @staticmethod
     def start(
