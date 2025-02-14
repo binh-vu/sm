@@ -132,7 +132,9 @@ class RemoteClient:
 
         # if the remote service is correct...
         classpath, classargs = (
-            httpx.post(endpoint, json={"method": "__meta__"}, timeout=None)
+            httpx.post(
+                endpoint, content=pickle.dumps({"method": "__meta__"}), timeout=None
+            )
             .raise_for_status()
             .json()
         )
