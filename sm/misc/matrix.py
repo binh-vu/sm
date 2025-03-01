@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Callable, Generic, Iterator, List, Tuple, TypeVar, overload
+from typing import Callable, Generic, Iterator, List, Sequence, Tuple, TypeVar, overload
 
 T = TypeVar("T")
 T1 = TypeVar("T1")
@@ -55,7 +55,9 @@ class Matrix(Generic[T]):
     def __getitem__(self, item: Tuple[int, int]) -> T: ...
 
     @overload
-    def __getitem__(self, item: slice | Tuple[slice, slice]) -> List[List[T]]: ...
+    def __getitem__(
+        self, item: slice | Tuple[slice, slice] | Tuple[slice, Sequence[int]]
+    ) -> List[List[T]]: ...
 
     def __getitem__(
         self,
@@ -66,13 +68,20 @@ class Matrix(Generic[T]):
             | Tuple[slice, slice]
             | Tuple[int, slice]
             | Tuple[slice, int]
+            | Tuple[slice, Sequence[int]]
         ),
     ) -> List[T] | List[List[T]] | T:
         if isinstance(item, (int, slice)):
             return self.data[item]
         if isinstance(item[0], slice):
-            return [row[item[1]] for row in self.data[item[0]]]  # type: ignore
-        return self.data[item[0]][item[1]]
+            if isinstance(item[1], (int, slice)):
+                return [row[item[1]] for row in self.data[item[0]]]  # type: ignore
+            return [[row[ci] for ci in item[1]] for row in self.data[item[0]]]  # type: ignore
+
+        row = self.data[item[0]]
+        if isinstance(item[1], (int, slice)):
+            return row[item[1]]
+        return [row[ci] for ci in item[1]]
 
     def get(self, key: Tuple[int, int], default: T) -> T:
         try:
