@@ -137,13 +137,15 @@ class RemoteClient:
                 try:
                     data = r.json()
                     exception_cls = import_attr(data["exception"])
-                    raise exception_cls(
+                    exception = exception_cls(
                         data["message"] + "\n.Stack trace:\n" + data["stack_trace"]
                     )
                 except:
+                    logger.error("Failed to reconstruct the exception", exc_info=True)
                     raise Exception(
-                        f"Can't reconstruct the exception. Failed to call {self.name}. Response ({r.status_code}), reason: {r.text}"
+                        f"(Check log for more info) Failed to call {self.name}. Response ({r.status_code}), reason: {r.text}"
                     )
+                raise exception
 
             return r.json()["return"]
 
@@ -151,21 +153,29 @@ class RemoteClient:
         self.cls = cls
         self.args = args
         self.endpoint = endpoint
-
-        # if the remote service is correct...
-        classpath, classargs = (
-            httpx.post(
-                endpoint, content=pickle.dumps({"method": "__meta__"}), timeout=None
-            )
-            .raise_for_status()
-            .json()
-        )
-        if not (classpath == get_classpath(cls) and tuple(classargs) == args):
-            raise ValueError(
-                f"Remote service is not correct. Get ({classpath})({classargs}) instead of ({get_classpath(cls)})({args})"
-            )
+        self.is_validated = False
 
     def __getattr__(self, name: str) -> Any:
+        if not self.is_validated:
+            # only validate once when we actually use the service
+            # if the remote service is correct...
+            classpath, classargs = (
+                httpx.post(
+                    self.endpoint,
+                    content=pickle.dumps({"method": "__meta__"}),
+                    timeout=None,
+                )
+                .raise_for_status()
+                .json()
+            )
+            if not (
+                classpath == get_classpath(self.cls) and tuple(classargs) == self.args
+            ):
+                raise ValueError(
+                    f"Remote service is not correct. Get ({classpath})({classargs}) instead of ({get_classpath(self.cls)})({self.args})"
+                )
+            self.is_validated = True
+
         return RemoteClient.RPC(self, name)
 
 
