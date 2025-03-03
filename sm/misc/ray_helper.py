@@ -26,7 +26,7 @@ import httpx
 import numpy as np
 import orjson
 from loguru import logger
-from sm.misc.funcs import get_classpath
+from sm.misc.funcs import get_classpath, import_attr
 from starlette.requests import Request
 from starlette.responses import Response
 from tqdm.auto import tqdm
@@ -76,7 +76,17 @@ class RemoteService:
                 )
             }
         except Exception as e:
-            return Response("".join(format_exception(e)), status_code=500)
+            return Response(
+                orjson.dumps(
+                    {
+                        "exception": get_classpath(e.__class__),
+                        "message": str(e),
+                        "stack_trace": "".join(format_exception(e)),
+                    }
+                ).decode(),
+                media_type="application/json",
+                status_code=500,
+            )
 
     @staticmethod
     def start(
@@ -124,9 +134,16 @@ class RemoteClient:
                 timeout=None,
             )
             if r.status_code != 200:
-                raise Exception(
-                    f"Failed to call {self.name}. Response ({r.status_code}), reason: {r.text}"
-                )
+                try:
+                    data = r.json()
+                    exception_cls = import_attr(data["exception"])
+                    raise exception_cls(
+                        data["message"] + "\n.Stack trace:\n" + data["stack_trace"]
+                    )
+                except:
+                    raise Exception(
+                        f"Can't reconstruct the exception. Failed to call {self.name}. Response ({r.status_code}), reason: {r.text}"
+                    )
 
             return r.json()["return"]
 
