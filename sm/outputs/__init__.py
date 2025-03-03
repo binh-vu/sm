@@ -1,3 +1,4 @@
+from sm.outputs._sm_formatter import deser_simple_tree_yaml, ser_simple_tree_yaml
 from sm.outputs._sm_transform import (
     create_sm_from_cta_cpa,
     create_sm_nodes,
@@ -24,4 +25,6 @@ __all__ = [
     "remove_isolated_nodes",
     "create_sm_from_cta_cpa",
     "create_sm_nodes",
+    "ser_simple_tree_yaml",
+    "deser_simple_tree_yaml",
 ]
