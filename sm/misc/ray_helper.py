@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import pickle
 import sqlite3
@@ -27,8 +29,6 @@ import numpy as np
 import orjson
 from loguru import logger
 from sm.misc.funcs import get_classpath, import_attr
-from starlette.requests import Request
-from starlette.responses import Response
 from tqdm.auto import tqdm
 
 try:
@@ -37,6 +37,12 @@ try:
     has_ray = True
 except ImportError:
     has_ray = False
+
+try:
+    from starlette.requests import Request
+    from starlette.responses import Response
+except ImportError:
+    ...
 
 
 @dataclass
@@ -65,7 +71,7 @@ class RemoteService:
         self.classpath = get_classpath(self.object.__class__)
         self.classargs = args
 
-    async def __call__(self, req: Request) -> dict | tuple | Response:
+    async def __call__(self, req: "Request") -> dict | tuple | "Response":
         req = pickle.loads(await req.body())
         if req["method"] == "__meta__":
             return self.classpath, self.classargs
