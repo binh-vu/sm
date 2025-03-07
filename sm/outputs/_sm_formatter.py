@@ -162,6 +162,8 @@ def deser_simple_tree_yaml(table: ColumnBasedTable, infile: Path) -> SemanticMod
                     else LiteralNodeDataType(_type.split("-", 1)[1])
                 ),
             )
+            if sm.has_literal_node(node.value):
+                return sm.get_literal_node(node.value)
             sm.add_node(node)
             return node
 

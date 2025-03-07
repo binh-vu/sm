@@ -238,7 +238,7 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
             assert self.column2id[node.col_index] == -1
             self.column2id[node.col_index] = node_id
         elif isinstance(node, LiteralNode):
-            assert node.value not in self.value2id
+            assert node.value not in self.value2id, node.value
             self.value2id[node.value] = node_id
         return node_id
 
