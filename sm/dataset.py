@@ -136,6 +136,12 @@ class FullTable:
             links=links,
         )
 
+    @classmethod
+    def from_column_based_table(cls, table: ColumnBasedTable) -> FullTable:
+        context = Context()
+        links = Matrix.default(table.shape(), list)
+        return cls(table=table, context=context, links=links)
+
 
 @dataclass
 class Dataset:
