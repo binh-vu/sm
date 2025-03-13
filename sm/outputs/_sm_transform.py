@@ -59,6 +59,12 @@ def remove_isolated_nodes(sm: SemanticModel) -> None:
         sm.remove_node(uid)
 
 
+def remove_literal_nodes(sm: SemanticModel):
+    for n in sm.iter_nodes():
+        if isinstance(n, LiteralNode):
+            sm.remove_node(n.id)
+
+
 def create_sm_nodes(
     columns: Sequence[str] | Mapping[int, str],
 ) -> Mapping[int, ClassNode | DataNode | LiteralNode]:

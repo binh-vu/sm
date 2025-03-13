@@ -3,6 +3,7 @@ from sm.outputs._sm_transform import (
     create_sm_from_cta_cpa,
     create_sm_nodes,
     remove_isolated_nodes,
+    remove_literal_nodes,
     replace_class_nodes_by_subject_columns,
 )
 from sm.outputs.semantic_model import (
@@ -27,4 +28,5 @@ __all__ = [
     "create_sm_nodes",
     "ser_simple_tree_yaml",
     "deser_simple_tree_yaml",
+    "remove_literal_nodes",
 ]

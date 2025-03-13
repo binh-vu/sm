@@ -65,6 +65,13 @@ class FullTable:
     def ncols(self) -> int:
         return self.table.ncols()
 
+    def sample_rows(self, num_rows: int) -> FullTable:
+        """Sample a subset of rows"""
+        if self.nrows() > num_rows:
+            indices = random.sample(range(self.nrows()), num_rows)
+            return self.select_rows(indices)
+        return self
+
     def select_rows(self, indices: list[int]) -> FullTable:
         """Select a subset of rows based on a boolean mask"""
         return FullTable(
