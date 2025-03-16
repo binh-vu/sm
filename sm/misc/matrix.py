@@ -116,3 +116,16 @@ class Matrix(Generic[T]):
     def map_index(self, fn: Callable[[int, int], T1]) -> Matrix[T1]:
         nrows, ncols = self.shape()
         return Matrix([[fn(ri, ci) for ci in range(ncols)] for ri in range(nrows)])
+
+    def add_column(self, index: int, default: Callable[[], T] | T) -> Matrix[T]:
+        ncols = self.shape()[1]
+        if index < 0 or index > ncols:
+            raise IndexError("Column index out of range")
+        data: list[list[T]] = [row.copy() for row in self.data]
+        if callable(default):
+            for row in data:
+                row.insert(index, default())  # type: ignore
+        else:
+            for row in data:
+                row.insert(index, default)
+        return Matrix(data)
