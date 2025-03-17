@@ -266,7 +266,16 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
         sem_types = set()
         for e in self.in_edges(dnode.id):
             u = self.get_node(e.source)
-            assert isinstance(u, ClassNode)
+            if not isinstance(u, ClassNode):
+                # this can happen for semantic models containing entity node
+                assert (
+                    isinstance(u, LiteralNode)
+                    and u.datatype == LiteralNodeDataType.Entity
+                ), u
+                raise NotImplementedError(
+                    "Handling semantic types with literal nodes as sources is not implemented yet."
+                )
+
             if u.abs_uri == statement_uri:
                 # it's part of an n-ary relationship u -> prop -> statement -> qual -> v
                 # if we have an n-ary relationship, a statement should only have one incoming edge

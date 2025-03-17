@@ -86,9 +86,22 @@ def ser_simple_tree_yaml(
         if isinstance(node, LiteralNode):
             if node.datatype == LiteralNodeDataType.Entity:
                 key = "entity"
+                outdict = {key: node.value, "props": {}}
+                for edge in sm.out_edges(node.id):
+                    used_uris.add(edge.abs_uri)
+                    prop = ns.get_rel_uri(edge.abs_uri)
+                    ser_node = serialize_node(sm.get_node(edge.target))
+                    if prop in outdict["props"]:
+                        if not isinstance(outdict["props"], Sequence):
+                            outdict["props"][prop] = [outdict["props"][prop]]
+                        outdict["props"][prop].append(ser_node)
+                    else:
+                        outdict["props"][prop] = ser_node
             else:
                 key = "literal-{}".format(node.datatype.value)
-            return {key: node.value}
+                outdict = {key: node.value}
+
+            return outdict
 
         raise UnreachableError()
 
@@ -152,37 +165,57 @@ def deser_simple_tree_yaml(table: ColumnBasedTable, infile: Path) -> SemanticMod
             sm.add_node(node)
             return node
 
-        if "props" not in obj:
-            _type, _value = next(iter((obj.items())))
+        if "type" in obj:
+            node = ClassNode(
+                abs_uri=namespace.get_abs_uri(obj["type"]), rel_uri=obj["type"]
+            )
+            sm.add_node(node)
+            for prop, value in obj["props"].items():
+                deser_values = deserialize_node(value)
+                if not isinstance(deser_values, list):
+                    deser_values = [deser_values]
+                for deser_value in deser_values:
+                    edge = Edge(
+                        source=node.id,
+                        target=deser_value.id,
+                        abs_uri=namespace.get_abs_uri(prop),
+                        rel_uri=prop,
+                    )
+                    sm.add_edge(edge)
+            return node
+
+        if "entity" in obj:
             node = LiteralNode(
-                value=_value,
-                datatype=(
-                    LiteralNodeDataType.Entity
-                    if _type == "entity"
-                    else LiteralNodeDataType(_type.split("-", 1)[1])
-                ),
+                value=obj["entity"],
+                datatype=LiteralNodeDataType.Entity,
             )
             if sm.has_literal_node(node.value):
                 return sm.get_literal_node(node.value)
             sm.add_node(node)
+
+            for prop, value in obj["props"].items():
+                deser_values = deserialize_node(value)
+                if not isinstance(deser_values, list):
+                    deser_values = [deser_values]
+                for deser_value in deser_values:
+                    edge = Edge(
+                        source=node.id,
+                        target=deser_value.id,
+                        abs_uri=namespace.get_abs_uri(prop),
+                        rel_uri=prop,
+                    )
+                    sm.add_edge(edge)
             return node
 
-        node = ClassNode(
-            abs_uri=namespace.get_abs_uri(obj["type"]), rel_uri=obj["type"]
+        _type, _value = next(iter((obj.items())))
+        assert _type.startswith("literal-")
+        node = LiteralNode(
+            value=_value,
+            datatype=LiteralNodeDataType(_type.split("-", 1)[1]),
         )
+        if sm.has_literal_node(node.value):
+            return sm.get_literal_node(node.value)
         sm.add_node(node)
-        for prop, value in obj["props"].items():
-            deser_values = deserialize_node(value)
-            if not isinstance(deser_values, list):
-                deser_values = [deser_values]
-            for deser_value in deser_values:
-                edge = Edge(
-                    source=node.id,
-                    target=deser_value.id,
-                    abs_uri=namespace.get_abs_uri(prop),
-                    rel_uri=prop,
-                )
-                sm.add_edge(edge)
         return node
 
     for node in indict["model"]:
