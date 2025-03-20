@@ -97,6 +97,8 @@ def ser_simple_tree_yaml(
                         outdict["props"][prop].append(ser_node)
                     else:
                         outdict["props"][prop] = ser_node
+                if len(outdict["props"]) == 0:
+                    del outdict["props"]
             else:
                 key = "literal-{}".format(node.datatype.value)
                 outdict = {key: node.value}
@@ -193,7 +195,7 @@ def deser_simple_tree_yaml(table: ColumnBasedTable, infile: Path) -> SemanticMod
                 return sm.get_literal_node(node.value)
             sm.add_node(node)
 
-            for prop, value in obj["props"].items():
+            for prop, value in obj.get("props", {}).items():
                 deser_values = deserialize_node(value)
                 if not isinstance(deser_values, list):
                     deser_values = [deser_values]
