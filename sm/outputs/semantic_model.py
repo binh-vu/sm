@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import enum
 import tempfile
 from copy import copy
@@ -209,8 +211,9 @@ class Edge(BaseEdge[int, str]):
 class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
     def __init__(self, check_cycle=False, multigraph=True):
         super().__init__(check_cycle=check_cycle, multigraph=multigraph)
-        self.column2id: List[int] = []
-        self.value2id: Dict[str, int] = {}
+        # column2id is a mapping from column index to node id, -1 means no node
+        self.column2id: list[int] = []
+        self.value2id: dict[str, int] = {}
 
     def get_data_node(self, column_index: int) -> DataNode:
         try:
@@ -229,6 +232,24 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
 
     def has_literal_node(self, value: str) -> bool:
         return value in self.value2id
+
+    def map_column_index(self, map_colindex: dict[int, int]) -> SemanticModel:
+        sm = SemanticModel(self._graph.check_cycle, self._graph.multigraph)
+        for n in self.iter_nodes():
+            if isinstance(n, DataNode):
+                assert (
+                    sm.add_node(
+                        DataNode(
+                            col_index=map_colindex[n.col_index], label=n.label, id=n.id
+                        )
+                    )
+                    == n.id
+                )
+            else:
+                assert sm.add_node(copy(n)) == n.id
+        for e in sm.iter_edges():
+            sm.add_edge(copy(e))
+        return sm
 
     def add_node(self, node: Node) -> int:
         node_id = super().add_node(node)
