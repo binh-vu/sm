@@ -35,6 +35,7 @@ from sm.inputs.prelude import ColumnBasedTable, Context, Link
 from sm.misc.funcs import batch
 from sm.misc.matrix import Matrix
 from sm.namespaces.namespace import Namespace
+from sm.outputs import deser_simple_tree_yaml, ser_simple_tree_yaml
 from sm.outputs.semantic_model import SemanticModel
 from tqdm.auto import tqdm
 from typing_extensions import Self
@@ -185,11 +186,11 @@ class Dataset:
 
         descriptions (containing semantic descriptions of tables)
         ├── <table_fs_id>
-        │   ├── version.01[.json|.yml]
-        │   ├── version.02[.json|.yml]
+        │   ├── version.01[.json|.yml|.st.yml]
+        │   ├── version.02[.json|.yml|.st.yml]
         │   └── ...
             or
-        ├── <table_fs_id>[.json|.yml]
+        ├── <table_fs_id>[.json|.yml|.st.yml]
         ├── ...
         tables (containing list of tables, the type of table depends on )
         ├── <table_fs_id>[.json|.csv|.xlsx][.gz|.bz2|.lz4]
@@ -198,7 +199,7 @@ class Dataset:
         We also support compressing formats such as .zip.
         descriptions
         ├── part-<num>.zip (no nested version folders)
-        │   ├── <table_fs_id>[.json|.yml]
+        │   ├── <table_fs_id>[.json|.yml|.st.yml]
         |   |   ...
         tables
         ├── part-<num>.zip
@@ -243,19 +244,17 @@ class Dataset:
                             desc_file = descdir / f"{example_id}.json"
                             if not desc_file.exists():
                                 desc_file = descdir / f"{example_id}.yml"
-                                assert desc_file.exists()
+                                if not desc_file.exists():
+                                    desc_file = descdir / f"{example_id}.st.yml"
+                            assert (
+                                desc_file.exists()
+                            ), f"Description file not found for {example_id}"
 
-                        if desc_file.name.endswith(".json"):
-                            raw_sms = orjson.loads(desc_file.read_bytes())
-                            sms = [SemanticModel.from_dict(sm) for sm in raw_sms]
-                        else:
-                            yaml = YAML()
-                            raw = yaml.load(BytesIO(desc_file.read_bytes()))
-                            ns = Namespace.from_prefix2ns(raw["prefixes"])
-                            sms = [
-                                SemanticModel.from_yaml_dict(sm, ns)
-                                for sm in raw["models"]
-                            ]
+                        sms = self._deser_sm(
+                            table.table,
+                            desc_file.read_bytes(),
+                            "".join(desc_file.suffixes),
+                        )
                     else:
                         sms = []
 
@@ -290,12 +289,12 @@ class Dataset:
                                 if table_id not in part:
                                     continue
 
-                                assert file.filename.endswith(".json")
                                 with zf.open(file, mode="r") as f:
-                                    sms = [
-                                        SemanticModel.from_dict(sm)
-                                        for sm in orjson.loads(f.read())
-                                    ]
+                                    sms = self._deser_sm(
+                                        part[table_id].table,
+                                        f.read(),
+                                        "".join(file.filename.split(".")[1:]),
+                                    )
                                     lst.append(
                                         Example(
                                             id=part[table_id].table.table_id,
@@ -319,21 +318,33 @@ class Dataset:
         individual_table_compressed: Optional[Literal["gz", "bz2", "lz4"]] = None,
         batch_compressed: bool = False,
         batch_size: int = 100,
+        sm_fmt: Literal["json", "simple-tree"] = "json",
+        sm_fmt_indent: Literal[0, 2] = 0,
         table_fmt: Literal["json", "txt"] = "json",
         table_fmt_indent: Literal[0, 2] = 0,
         clean_previous_data: bool = True,
+        ns: Optional[Namespace] = None,
+        multi_desc_version: bool = False,
     ):
+        """Save dataset to a folder, single, or multiple zip files. Assuming the following structure:
+
+        Args:
+            multiversion: if True, we create a description folder for each example id so that we can have multiple versioned files
+        """
         if self.is_zip_file():
             with ZipFile(self.location, "w") as root:
                 assert isinstance(root, ZipFile)
                 for e in examples:
-                    ename = get_friendly_fs_id(e.table.table.table_id) + f".{table_fmt}"
+                    ename = get_friendly_fs_id(e.table.table.table_id)
                     root.writestr(
-                        "descriptions/" + ename,
-                        data=orjson.dumps([sm.to_dict() for sm in e.sms]),
+                        "descriptions/" + ename + f".{fmt_to_ext(sm_fmt)}",
+                        data=self._ser_sm(
+                            e.sms, e.table.table, sm_fmt, sm_fmt_indent, ns
+                        ),
+                        # data=orjson.dumps([sm.to_dict() for sm in e.sms]),
                     )
                     root.writestr(
-                        "tables/" + ename,
+                        "tables/" + ename + f".{fmt_to_ext(table_fmt)}",
                         data=self._ser_table(e.table, table_fmt, table_fmt_indent),
                     )
             return
@@ -362,34 +373,39 @@ class Dataset:
                     tabledir / filename, "w"
                 ) as tzf:
                     for e in bexamples:
-                        ename = (
-                            get_friendly_fs_id(e.table.table.table_id) + f".{table_fmt}"
-                        )
+                        ename = get_friendly_fs_id(e.table.table.table_id)
                         dzf.writestr(
-                            ename,
-                            data=orjson.dumps([sm.to_dict() for sm in e.sms]),
+                            ename + f".{fmt_to_ext(sm_fmt)}",
+                            data=self._ser_sm(
+                                e.sms, e.table.table, sm_fmt, sm_fmt_indent, ns
+                            ),
                         )
                         tzf.writestr(
-                            ename,
+                            ename + f".{fmt_to_ext(table_fmt)}",
                             data=self._ser_table(e.table, table_fmt, table_fmt_indent),
                         )
         else:
             for e in examples:
                 filename = get_friendly_fs_id(e.table.table.table_id)
-                (descdir / filename).mkdir(exist_ok=True)
-                compressed_filename = (
-                    filename + f".{table_fmt}.{individual_table_compressed}"
+
+                if multi_desc_version:
+                    desc_outfile = (
+                        descdir / filename / f"version.01.{fmt_to_ext(sm_fmt)}"
+                    )
+                    desc_outfile.parent.mkdir(parents=True, exist_ok=True)
+                else:
+
+                    desc_outfile = descdir / f"{filename}.{fmt_to_ext(sm_fmt)}"
+                desc_outfile.write_bytes(
+                    self._ser_sm(e.sms, e.table.table, sm_fmt, sm_fmt_indent, ns)
+                )
+
+                table_outfile = tabledir / (
+                    filename + f".{fmt_to_ext(table_fmt)}.{individual_table_compressed}"
                     if individual_table_compressed is not None
-                    else filename + f".{table_fmt}"
+                    else filename + f".{fmt_to_ext(table_fmt)}"
                 )
-                json.ser(
-                    [sm.to_dict() for sm in e.sms],
-                    descdir / filename / "version.01.json",
-                    indent=2,
-                )
-                with get_open_fn(tabledir / compressed_filename)(
-                    tabledir / compressed_filename, "wb"
-                ) as f:
+                with get_open_fn(table_outfile)(table_outfile, "wb") as f:
                     f.write(self._ser_table(e.table, table_fmt, table_fmt_indent))
 
     @staticmethod
@@ -485,6 +501,48 @@ class Dataset:
 
         raise ValueError(f"Unsupported format: {table_fmt}")
 
+    @staticmethod
+    def _deser_sm(table: ColumnBasedTable, data: bytes, ext: str):
+        if ext == ".json":
+            return [SemanticModel.from_dict(sm) for sm in orjson.loads(data)]
+        if ext == ".st.yml":
+            return [deser_simple_tree_yaml(table, BytesIO(data))]
+        if ext == ".yml":
+            yaml = YAML()
+            raw = yaml.load(BytesIO(data))
+            ns = Namespace.from_prefix2ns(raw["prefixes"])
+            sms = [SemanticModel.from_yaml_dict(sm, ns) for sm in raw["models"]]
+            return sms
+        raise ValueError(f"Unknown file type: {ext}")
+
+    @staticmethod
+    def _ser_sm(
+        sm: Union[SemanticModel, Sequence[SemanticModel]],
+        table: ColumnBasedTable,
+        fmt: Literal["json", "simple-tree"],
+        fmt_indent: Literal[0, 2] = 0,
+        ns: Optional[Namespace] = None,
+    ):
+        if fmt == "json":
+            if isinstance(sm, SemanticModel):
+                sm = [sm]
+            return orjson.dumps(
+                [x.to_dict() for x in sm],
+                option=orjson.OPT_INDENT_2 if fmt_indent > 0 else None,
+            )
+        elif fmt == "simple-tree":
+            if isinstance(sm, Sequence):
+                assert len(sm) == 1
+                sm = sm[0]
+
+            assert ns is not None
+            file = BytesIO()
+
+            ser_simple_tree_yaml(table, sm, ns, file)
+            return file.getvalue()
+        else:
+            raise ValueError(f"Unsupported format: {fmt}")
+
 
 def get_friendly_fs_id(id: str) -> str:
     if id.startswith("http://") or id.startswith("https://"):
@@ -508,6 +566,12 @@ def get_friendly_fs_id(id: str) -> str:
 
         raise NotImplementedError()
     return slugify(id.replace("/", "_"), lowercase=False).replace("-", "_")
+
+
+def fmt_to_ext(fmt: Literal["json", "txt", "simple-tree"]) -> str:
+    if fmt == "simple-tree":
+        return "st.yml"
+    return fmt
 
 
 class SampleableTable(Protocol):

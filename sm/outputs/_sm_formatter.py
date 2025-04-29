@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import typing
 from collections import Counter
 from pathlib import Path
 from typing import Sequence
 
 import serde.yaml
-from graph.retworkx import BaseEdge, BaseNode, RetworkXDiGraph, has_cycle
+from graph.retworkx import has_cycle
 from sm.inputs.table import ColumnBasedTable
 from sm.misc.prelude import UnreachableError
 from sm.namespaces.prelude import Namespace
@@ -20,7 +21,7 @@ from sm.outputs.semantic_model import (
 
 
 def ser_simple_tree_yaml(
-    table: ColumnBasedTable, sm: SemanticModel, ns: Namespace, outfile: Path
+    table: ColumnBasedTable, sm: SemanticModel, ns: Namespace, outfile: Path | typing.IO
 ):
     """Save the semantic model to a YAML file with simple formatting as follow:
 
@@ -46,6 +47,12 @@ def ser_simple_tree_yaml(
     Note:
         - the model must be a tree, an error will be thrown if the model contains cycles.
         - columns that are not used in the model will not be included in the output.
+
+    Args:
+        table: The table containing the columns referenced in the semantic model
+        sm: The semantic model to serialize
+        ns: The namespace used for URI resolution
+        outfile: Path or file-like object where to write the serialized output
     """
     if has_cycle(sm):
         raise ValueError(
@@ -123,7 +130,9 @@ def ser_simple_tree_yaml(
     return serde.yaml.ser(output, outfile)
 
 
-def deser_simple_tree_yaml(table: ColumnBasedTable, infile: Path) -> SemanticModel:
+def deser_simple_tree_yaml(
+    table: ColumnBasedTable, infile: Path | typing.IO
+) -> SemanticModel:
     indict = serde.yaml.deser(infile)
     assert indict["version"] == "simple-tree-1"
 
