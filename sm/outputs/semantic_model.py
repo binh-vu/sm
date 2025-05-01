@@ -923,7 +923,8 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
                     "\n", "\\n"
                 )
             if isinstance(node, LiteralNode):
-                return f"{Back.LIGHTCYAN_EX}{Fore.BLACK}[{node.id}] {node.readable_label}{Style.RESET_ALL}"
+                return f"{Back.LIGHTCYAN_EX}{Fore.BLACK}[{node.id}] {node.label}{Style.RESET_ALL}"
+            raise Exception(f"Unreachable: {type(node)}")
 
         def browser_rnode(node: Node):
             style = "padding: 2px; border-radius: 3px;"
@@ -932,7 +933,8 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
             if isinstance(node, DataNode):
                 return f'<span style="background: #ffe58f; color: black; {style}">[{node.id}] {node.label} (column {node.col_index})</span>'
             if isinstance(node, LiteralNode):
-                return f"<span style=\"background: {'#c6e5ff' if node.is_in_context else '#d3adf7'}; color: black; {style}\">[{node.id}] {node.readable_label}</span>"
+                return f"<span style=\"background: {'#c6e5ff' if node.is_in_context else '#d3adf7'}; color: black; {style}\">[{node.id}] {node.label}</span>"
+            raise Exception(f"Unreachable: {type(node)}")
 
         def terminal_redge(edge: Edge):
             return f"─[{edge.id}: {Back.LIGHTMAGENTA_EX}{Fore.BLACK}{edge.label}{Style.RESET_ALL}]→"
