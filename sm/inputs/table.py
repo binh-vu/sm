@@ -39,7 +39,7 @@ class ColumnBasedTable:
         return len(self.columns[0].values), len(self.columns)
 
     def select_rows(self, indices: list[int]) -> ColumnBasedTable:
-        """Select a subset of rows based on a boolean mask"""
+        """Return a new table containing only the rows specified by the given list of indices."""
         return ColumnBasedTable(
             self.table_id, [col.select_rows(indices) for col in self.columns]
         )
