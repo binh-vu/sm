@@ -246,7 +246,7 @@ def add_ray_actors(
     size: int = 1,
     scope: int = -1,
     remote_options: Optional[dict] = None,
-) -> list["ray.ObjectRef[R]"]:
+) -> Sequence["ray.ObjectRef[R]"]:
     """Create a ray actor and return the actor ref. Also, store the actor ref in an scope identified by the index.
 
     Args:
@@ -271,7 +271,7 @@ def add_ray_actors(
     return scope_data.actors[ns]
 
 
-def get_ray_actors(ns: str, scope: int = -1) -> list["ray.ObjectRef"]:
+def get_ray_actors(ns: str, scope: int = -1) -> Sequence["ray.ObjectRef[R]"]:
     global ray_scopes
     scope_data = ray_scopes[scope]
     assert scope_data.allow_parallel, "Cannot create actors in a non-parallel context"

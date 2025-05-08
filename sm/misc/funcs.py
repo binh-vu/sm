@@ -22,6 +22,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    overload,
 )
 
 import numpy as np
@@ -123,7 +124,7 @@ def percentage(
 
 
 def is_non_decreasing_sequence(
-    lst: Union[list[Union[int, float]], list[int], list[float]]
+    lst: Union[list[Union[int, float]], list[int], list[float]],
 ) -> bool:
     return len(lst) == 0 or (all(lst[i - 1] <= lst[i] for i in range(1, len(lst))))
 
@@ -323,6 +324,10 @@ def flatten_list(lst: list) -> list:
         else:
             output.append(item)
     return output
+
+
+@overload
+def batch(size: int, var: list[V], return_tuple: bool = False) -> list[list[V]]: ...
 
 
 def batch(size: int, *vars, return_tuple: bool = False):

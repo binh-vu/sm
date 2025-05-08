@@ -31,14 +31,15 @@ from ruamel.yaml import YAML
 from serde import json
 from serde.helper import DEFAULT_ORJSON_OPTS, get_open_fn
 from slugify import slugify
+from tqdm.auto import tqdm
+from typing_extensions import Self
+
 from sm.inputs.prelude import ColumnBasedTable, Context, Link
 from sm.misc.funcs import batch
 from sm.misc.matrix import Matrix
 from sm.namespaces.namespace import Namespace
 from sm.outputs import deser_simple_tree_yaml, ser_simple_tree_yaml
 from sm.outputs.semantic_model import SemanticModel
-from tqdm.auto import tqdm
-from typing_extensions import Self
 
 T = TypeVar("T", covariant=True)
 T1 = TypeVar("T1")
@@ -293,7 +294,7 @@ class Dataset:
                                     sms = self._deser_sm(
                                         part[table_id].table,
                                         f.read(),
-                                        "".join(file.filename.split(".")[1:]),
+                                        "." + "".join(file.filename.split(".")[1:]),
                                     )
                                     lst.append(
                                         Example(
@@ -503,11 +504,11 @@ class Dataset:
 
     @staticmethod
     def _deser_sm(table: ColumnBasedTable, data: bytes, ext: str):
-        if ext == ".json":
+        if ext.endswith(".json"):
             return [SemanticModel.from_dict(sm) for sm in orjson.loads(data)]
-        if ext == ".st.yml":
+        if ext.endswith(".st.yml"):
             return [deser_simple_tree_yaml(table, BytesIO(data))]
-        if ext == ".yml":
+        if ext.endswith(".yml"):
             yaml = YAML()
             raw = yaml.load(BytesIO(data))
             ns = Namespace.from_prefix2ns(raw["prefixes"])
