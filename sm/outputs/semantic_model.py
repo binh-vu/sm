@@ -482,9 +482,9 @@ class SemanticModel(RetworkXDiGraph[str, Node, Edge]):
         with open(outfile, "wb") as f:
             f.write(orjson.dumps(self.to_dict(), option=orjson.OPT_INDENT_2))
 
-    @staticmethod
-    def from_dict(record: dict):
-        sm = SemanticModel()
+    @classmethod
+    def from_dict(cls, record: dict):
+        sm = cls()
         id2node = {}
         for u in record["nodes"]:
             if "col_index" in u:
